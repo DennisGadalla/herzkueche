@@ -1,29 +1,35 @@
+/* ================= Base / Theme ================= */
 :root {
-  --bg: #0b1220;
-  --text: #e8eefc;
-  --muted: #a6b2cc;
-  --card: #121a2e;
-  --border: #1b2742;
-  --accent: #ff6a3d;
-  --accent-2: #7aa2ff;
-  --ring: rgba(255,106,61,.35);
+  /* Hauptfarben: etwas wärmer, freundlicher */
+  --bg: #121015;           /* statt tiefblau -> leicht warmes Anthrazit */
+  --text: #f4efe9;         /* wärmeres Weiß mit leichtem Creme-Ton */
+  --muted: #c6bfb6;        /* warmgrau statt blaugrau */
+  --card: #1b181f;         /* weiches Dunkelbraun-Violett */
+  --border: #2e2730;       /* wärmerer Rand */
+  --accent: #ff7043;       /* warmes Orange (statt kaltem Rot) */
+  --accent-2: #f8b46e;     /* helles Apricot für subtile Verläufe */
+  --ring: rgba(255, 112, 67, .35);
   --maxw: 1080px;
   --radius: 14px;
-  --shadow: 0 10px 40px rgba(0,0,0,.35);
+  --shadow: 0 10px 40px rgba(0, 0, 0, .35);
 }
+
 @media (prefers-color-scheme: light) {
   :root {
-    --bg: #ffffff;
-    --text: #0b1220;
-    --muted: #5b6b8b;
-    --card: #f5f7fb;
-    --border: #e5e9f2;
-    --accent: #e6522b;
-    --accent-2: #3a66ff;
-    --ring: rgba(58,102,255,.35);
-    --shadow: 0 10px 30px rgba(9,17,33,.08);
+    --bg: #ffffff;          /* leicht cremiger Hintergrund */
+    --text: #211b17;        /* warmes Dunkelbraun statt Schwarz */
+    --muted: #6b5c55;       /* weicher Ton für Sekundärtexte */
+    --card: #fdf7f2;        /* warmes Offwhite für Karten */
+    --border: #dfa79a;      /* sanftes beige-grau */
+    --accent: #f16832;      /* warmes Terracotta-Orange */
+    --accent-2: #f7a74f;    /* helleres Apricot */
+    --ring: rgba(241, 104, 50, .35);
+    --shadow: 0 10px 30px rgba(40, 30, 10, .1);
   }
 }
+
+
+
 * { box-sizing: border-box }
 html, body { height: 100% }
 body {

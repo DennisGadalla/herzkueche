@@ -46,11 +46,16 @@ document.addEventListener("DOMContentLoaded", () => {
       track.appendChild(img);
     });
 
-    // const observer = new ResizeObserver(() => {
-    //   const totalWidth = track.scrollWidth / 2;
-    //   const duration = Math.max(40, totalWidth / 100); // slower = larger
-    //   track.style.animationDuration = `${duration}s`;
-    // });
-    // observer.observe(track);
   });
 });
+
+// ================= Header Scroll Effect =================
+document.addEventListener("scroll", () => {
+  const header = document.querySelector("header");
+  if (window.scrollY > 30) {
+    header.classList.add("scrolled");
+  } else {
+    header.classList.remove("scrolled");
+  }
+});
+
