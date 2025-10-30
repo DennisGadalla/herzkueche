@@ -116,6 +116,24 @@ header {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
 
+
+/* ================= Mobile tweaks for Hero ================= */
+@media (max-width: 899px) {
+  /* Bild zuerst, dann Text */
+  .hero {
+    flex-direction: column-reverse;  /* default war column -> jetzt umgedreht */
+  }
+
+  /* Bild größer machen */
+  .hero-portrait {
+    width: 225px;   /* vorher 180px → +25 % */
+    height: 225px;
+    margin-bottom: 24px;
+  }
+}
+
+
+
 /* ================= Desktop Layout ================= */
 @media (min-width: 900px) {
   .hero {
