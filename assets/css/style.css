@@ -78,15 +78,78 @@ header {
 .hero h1 { font-size: clamp(28px, 5vw, 52px); line-height: 1.12; margin: 0; }
 .hero p { margin: 6px 0 16px; color: var(--muted); }
 
-/* Hero portrait */
+/* ================= Hero Layout ================= */
+.hero {
+  display: flex;
+  flex-direction: column;        /* mobile: stacked */
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 96px 0 64px;
+  text-align: center;
+}
+
+/* Text container */
+.hero-content {
+  max-width: 640px;
+}
+
+/* Portrait container (for easier alignment on desktop) */
+.hero-image {
+  display: flex;
+  justify-content: center;
+}
+
+/* Portrait itself */
 .hero-portrait {
-  width: 160px; height: 160px; border-radius: 50%; object-fit: cover;
-  display: block; margin: 0 auto 20px;
+  width: 180px;
+  height: 180px;
+  border-radius: 70%;
+  object-fit: cover;
   border: 3px solid var(--border);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
   transition: transform .4s ease, box-shadow .4s ease;
 }
-.hero-portrait:hover { transform: scale(1.04); box-shadow: 0 8px 22px rgba(0,0,0,.45); }
+
+.hero-portrait:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+/* ================= Desktop Layout ================= */
+@media (min-width: 900px) {
+  .hero {
+    flex-direction: row;         /* side by side */
+    align-items: center;
+    justify-content: space-between;
+    text-align: left;
+    gap: 60px;
+  }
+
+  .hero-content {
+    flex: 1;
+    max-width: 600px;
+  }
+
+  .hero-image {
+    flex: 0 0 auto;
+  }
+
+  .hero-portrait {
+    width: 300px;
+    height: 300px;
+    margin-right: 0;
+  }
+}
+
+@media (min-width: 1300px) {
+  .hero-portrait {
+    width: 360px;
+    height: 360px;
+  }
+}
+
+
 
 /* Hero background slideshow */
 .hero-bg-slideshow {
