@@ -257,3 +257,63 @@ footer { padding: 28px 0; border-top: 1px solid var(--border);
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
 }
+
+/* ================= Hero Social Links ================= */
+.hero-social {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.insta-link,
+.yt-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.insta-link {
+  color: var(--accent);
+}
+
+.yt-link {
+  color: #ff4d4d;
+}
+
+.insta-link svg,
+.yt-link svg {
+  flex-shrink: 0;
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+/* Hover Effects */
+.insta-link:hover {
+  color: #e1306c;
+  transform: translateY(-1px);
+}
+
+.insta-link:hover svg {
+  transform: scale(1.1);
+  color: #e1306c;
+}
+
+.yt-link:hover {
+  color: #ff0000;
+  transform: translateY(-1px);
+}
+
+.yt-link:hover svg {
+  transform: scale(1.1);
+  color: #ff0000;
+}
+
+/* Centered on mobile */
+@media (max-width: 899px) {
+  .hero-social {
+    align-items: center;
+  }
+}
