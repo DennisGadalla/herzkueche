@@ -180,26 +180,34 @@
         <div class="card">
           <span class="tag">Kontakt</span>
           <h2>Lust auf Genuss?</h2>
-          <form action="mailto:info@sabines-herzkueche.de" method="post">
+          <form action="https://api.web3forms.com/submit"
+                method="POST"
+                class="contact-form">
+
+            <!-- Web3Forms Access Key -->
+            <input type="hidden" name="access_key"
+                  value="37169505-4753-411a-94c0-aed80672ed6c">
+
             <div class="grid">
               <div class="col-6">
-                <label>Dein Name
-                  <input name="name" required>
-                </label>
+                <label for="name">Dein Name</label>
+                <input id="name" type="text" name="name" required>
               </div>
+
               <div class="col-6">
-                <label>E-Mail
-                  <input type="email" name="email" required>
-                </label>
+                <label for="email">E-Mail</label>
+                <input id="email" type="email" name="email" required>
               </div>
+
               <div class="col-12">
-                <label>Nachricht
-                  <textarea name="message" required></textarea>
-                </label>
+                <label for="message">Nachricht</label>
+                <textarea id="message" name="message" required></textarea>
               </div>
             </div>
+
             <button class="btn primary" type="submit">Nachricht senden</button>
           </form>
+
         </div>
       </div>
     </section>
