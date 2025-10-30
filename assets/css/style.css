@@ -84,6 +84,32 @@ header {
 .hero h1 { font-size: clamp(28px, 5vw, 52px); line-height: 1.12; margin: 0; }
 .hero p { margin: 6px 0 16px; color: var(--muted); }
 
+/* ================= Header Logo (leicht gezoomt) ================= */
+.brand-logo {
+  width: 72px;
+  height: 72px;
+  display: block;
+  border-radius: 6px;
+  overflow: hidden;
+  transition: transform 0.4s ease, opacity 0.3s ease;
+  object-fit: cover;
+  object-position: center;
+  transform: scale(1.5);     /* 15 % Zoom – „hineingezoomt“ */
+}
+
+.brand-logo:hover {
+  transform: scale(1.22);     /* sanftes zusätzliches Hover-Zoom */
+  opacity: 0.9;
+}
+
+.brand span {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+
+
 /* ================= Hero Layout ================= */
 .hero {
   display: flex;
