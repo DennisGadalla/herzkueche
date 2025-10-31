@@ -570,3 +570,52 @@ header.nav-hidden {
   pointer-events: none;
   transform: translateY(-8px);
 }
+
+/* ===========================
+   Image Lightbox (in-page)
+   =========================== */
+.img-modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in oklab, var(--bg) 40%, black 50%);
+  backdrop-filter: blur(2px) saturate(120%);
+  z-index: 2000;
+}
+
+.img-modal.is-open,
+.img-modal[aria-hidden="false"] {
+  display: flex;
+}
+
+.img-modal__backdrop {
+  position: absolute;
+  inset: 0;
+}
+
+.img-modal__dialog {
+  position: relative;
+  z-index: 1;
+  max-width: 96vw;
+  max-height: 96vh;
+  overflow: visible;
+}
+
+.img-modal__img {
+  display: block;
+  max-width: 92vw;
+  max-height: 88vh;
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  cursor: zoom-out;
+  user-select: none;
+}
+
+@media (max-width: 600px) {
+  .img-modal__img {
+    max-width: 94vw;
+    max-height: 82vh;
+  }
+}

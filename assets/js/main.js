@@ -2,6 +2,11 @@
   "use strict";
 
   /* ===============================================================
+     0) Small helpers
+     =============================================================== */
+  const $ = (sel, ctx = document) => ctx.querySelector(sel);
+
+  /* ===============================================================
      1) Reveal cards on scroll (IntersectionObserver)
      =============================================================== */
   const revealObserver = new IntersectionObserver(
@@ -24,10 +29,82 @@
   if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 
   /* ===============================================================
-     3) Impressions banner: discover images, animate track, click → popup
+     3) Image lightbox (in-page, no separate button)
+     =============================================================== */
+  let modal, modalImg, previousOverflow;
+
+  function ensureLightbox() {
+    if (modal) return;
+
+    modal = document.createElement("div");
+    modal.className = "img-modal";
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-label", "Bildvorschau");
+    modal.setAttribute("aria-hidden", "true");
+
+    const backdrop = document.createElement("div");
+    backdrop.className = "img-modal__backdrop";
+    backdrop.setAttribute("data-close", "img-modal");
+
+    const dialog = document.createElement("figure");
+    dialog.className = "img-modal__dialog";
+
+    modalImg = document.createElement("img");
+    modalImg.className = "img-modal__img";
+    modalImg.alt = "Impression";
+    modalImg.decoding = "async";
+
+    dialog.appendChild(modalImg);
+    modal.appendChild(backdrop);
+    modal.appendChild(dialog);
+    document.body.appendChild(modal);
+
+    // Close on backdrop or image click
+    modal.addEventListener("click", (e) => {
+      const isBackdrop = e.target.matches("[data-close='img-modal']");
+      const isImg = e.target === modalImg;
+      if (isBackdrop || isImg) closeLightbox();
+    });
+
+    // Close on ESC
+    window.addEventListener(
+      "keydown",
+      (e) => {
+        if (e.key === "Escape") closeLightbox();
+      },
+      { passive: true }
+    );
+  }
+
+  function openLightbox(src) {
+    ensureLightbox();
+
+    const abs =
+      src instanceof HTMLImageElement
+        ? src.currentSrc || src.src
+        : String(src || "");
+    modalImg.src = abs;
+
+    previousOverflow = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+
+    modal.setAttribute("aria-hidden", "false");
+    modal.classList.add("is-open");
+  }
+
+  function closeLightbox() {
+    if (!modal) return;
+    modal.setAttribute("aria-hidden", "true");
+    modal.classList.remove("is-open");
+    modalImg.src = "";
+    document.documentElement.style.overflow = previousOverflow || "";
+  }
+
+  /* ===============================================================
+     4) Impressions banner: discover images, animate track, click → lightbox
      =============================================================== */
   document.addEventListener("DOMContentLoaded", async () => {
-    const track = document.getElementById("impressions-track");
+    const track = $("#impressions-track");
     const banner = track?.parentElement;
     if (!track || !banner) return;
 
@@ -60,12 +137,12 @@
       return null;
     };
 
-    // Prefer any preset <img> inside the track
+    // Prefer preset <img> elements inside the track
     let sources = Array.from(track.querySelectorAll("img"))
       .map((el) => el.getAttribute("src"))
       .filter(Boolean);
 
-    // Else discover by probing file patterns
+    // Else discover files by probing patterns
     if (!sources.length) {
       const tasks = [];
       for (let i = 1; i <= maxImages; i++) tasks.push(findExisting(i));
@@ -74,7 +151,7 @@
     }
     if (!sources.length) return;
 
-    // Build track content: one set + duplicate for seamless loop
+    // Build track: one set + duplicate for seamless loop
     track.innerHTML = "";
     const appendSet = (srcs) => {
       const frag = document.createDocumentFragment();
@@ -90,116 +167,19 @@
     appendSet(sources);
     appendSet(sources);
 
-    // Adjust animation duration to real width
+    // Tune animation duration to real width
     const halfWidth = track.scrollWidth / 2;
     if (halfWidth > 0) {
-      const pxPerSec = 90; // slower idle scroll
+      const pxPerSec = 90;
       const secs = Math.max(40, Math.round(halfWidth / pxPerSec));
       track.style.animationDuration = `${secs}s`;
     }
 
-    // Click: open image in robust popup tab (absolute URL)
+    // Click → open in-page lightbox
     track.addEventListener("click", (e) => {
       const img = e.target.closest("img");
       if (!img) return;
-      const abs =
-        img.currentSrc ||
-        new URL(img.getAttribute("src"), window.location.href).href;
-      openImagePopupTab(abs);
+      openLightbox(img);
     });
   });
-
-  /* ===============================================================
-     4) Popup tab viewer (robust; works with blockers & Safari)
-     =============================================================== */
-  function openImagePopupTab(src) {
-    // Try a blank, no-opener window (safer & fewer quirks)
-    const w = window.open("about:blank", "_blank", "noopener,noreferrer");
-
-    // If blocked: fall back to opening the image URL directly
-    if (!w) {
-      const a = document.createElement("a");
-      a.href = src;
-      a.target = "_blank";
-      a.rel = "noopener";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      return;
-    }
-
-    // Escape quotes for safe attribute injection
-    const safeSrc = String(src).replace(/"/g, "&quot;");
-
-    const html = `<!doctype html>
-<html lang="de">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Bild</title>
-  <style>
-    :root{
-      --bg:#121015; --text:#f4efe9; --muted:#c6bfb6;
-      --accent:#ff7043; --border:#dfa79a; --radius:12px;
-      --shadow:0 10px 40px rgba(0,0,0,.35);
-    }
-    @media (prefers-color-scheme: light){
-      :root{ --bg:#ffffff; --text:#211b17; --muted:#6b5c55; }
-    }
-    html,body{height:100%}
-    body{
-      margin:0; background:var(--bg); color:var(--text);
-      display:grid; place-items:center;
-      font:16px/1.5 system-ui,Segoe UI,Roboto,sans-serif;
-    }
-    .wrap{position:fixed; inset:0; display:grid; place-items:center;}
-    img{
-      max-width:min(96vw,1400px);
-      max-height:96vh;
-      border-radius:12px;
-      box-shadow:0 20px 60px rgba(0,0,0,.5);
-      cursor:zoom-out; user-select:none;
-    }
-    .back{
-      position:fixed; top:12px; right:12px;
-      padding:9px 14px; border-radius:12px;
-      border:0; background:#dfa79a; color:var(--text);
-      font-weight:600; cursor:pointer; box-shadow:var(--shadow);
-      transition:transform .06s ease, opacity .2s ease;
-    }
-    .back:hover{ transform:translateY(-1px); opacity:.95; }
-    .hint{
-      position:fixed; bottom:12px; right:12px;
-      color:var(--muted); font-size:12px; opacity:.85;
-    }
-    @media (prefers-reduced-motion: reduce){ .back{ transition:none; } }
-  </style>
-</head>
-<body>
-  <div class="wrap" id="backdrop" role="button" aria-label="Fenster schließen">
-    <img src="${safeSrc}" alt="Impression" id="img">
-    <button class="back" id="closeBtn" aria-label="Zurück">Zurück</button>
-    <div class="hint">Klick aufs Bild oder ESC schließt</div>
-  </div>
-  <script>
-    (function(){
-      const closeNow = () => { try { window.close(); } catch(e) {} };
-      document.getElementById('img').addEventListener('click', closeNow);
-      document.getElementById('closeBtn').addEventListener('click', closeNow);
-      document.getElementById('backdrop').addEventListener('click', (e)=>{
-        if(e.target && (e.target.id === 'backdrop')) closeNow();
-      });
-      document.addEventListener('keydown', (e)=>{
-        if(e.key === 'Escape' || e.key === 'Esc') closeNow();
-      }, {passive:true});
-    }());
-  </script>
-</body>
-</html>`;
-
-    // Some Safari versions require synchronous write after open()
-    w.document.open();
-    w.document.write(html);
-    w.document.close();
-  }
 })();
