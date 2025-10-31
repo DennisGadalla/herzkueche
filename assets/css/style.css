@@ -203,7 +203,6 @@ header {
   }
 }
 
-
 /* ================= Hero ================= */
 .hero-wrap {
   position: relative;
@@ -396,6 +395,7 @@ footer {
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;          /* Firefox hide bar */
   cursor: grab;
+  touch-action: pan-x;            /* improve horizontal drag on touch */
 }
 .impressions-banner::-webkit-scrollbar { display: none; } /* WebKit hide */
 
@@ -422,7 +422,6 @@ footer {
 }
 
 .impressions-banner img:active { transform: scale(0.98); }
-
 
 /* ================= Lightbox ================= */
 .lightbox {
@@ -459,7 +458,6 @@ footer {
   border-radius: 8px;
 }
 .lightbox-close:hover { background: rgba(255,255,255,.12); }
-
 
 /* ================= Hero Social Links ================= */
 .hero-social {
