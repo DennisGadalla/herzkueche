@@ -1,15 +1,77 @@
 (() => {
   "use strict";
 
+  /* ========================= Helpers & probe ========================= */
   const $ = (sel, ctx = document) => ctx.querySelector(sel);
 
-  /* ================= Reveal cards ================= */
+  // Detect whether HEAD works; else fallback to Image()
+  let PROBE_MODE = (location.protocol === "file:") ? "img" : "head";
+  async function detectProbeMode(sampleUrl) {
+    if (PROBE_MODE === "img") return "img";
+    try {
+      const res = await fetch(sampleUrl, { method: "HEAD", cache: "no-store" });
+      if (!res.ok) throw 0;
+      PROBE_MODE = "head";
+    } catch {
+      PROBE_MODE = "img";
+    }
+    return PROBE_MODE;
+  }
+  async function probeExists(url) {
+    if (PROBE_MODE === "head") {
+      try {
+        const r = await fetch(url, { method: "HEAD", cache: "no-store" });
+        return r.ok;
+      } catch { return false; }
+    }
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve(true);
+      img.onerror = () => resolve(false);
+      img.src = url;
+    });
+  }
+
+  /* ========================= Small persistent cache ========================= */
+  const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+  function getCache(key) {
+    try {
+      const obj = JSON.parse(localStorage.getItem(key) || "null");
+      if (!obj || typeof obj !== "object") return null;
+      if (typeof obj.t !== "number" || !Array.isArray(obj.v)) return null;
+      if (Date.now() > obj.t) return null;
+      return obj.v;
+    } catch { return null; }
+  }
+  function setCache(key, arr, ttl = CACHE_TTL_MS) {
+    try {
+      localStorage.setItem(
+        key,
+        JSON.stringify({ t: Date.now() + ttl, v: arr || [] })
+      );
+    } catch { /* ignore */ }
+  }
+  function setCacheScalar(key, val, ttl = CACHE_TTL_MS) {
+    try {
+      localStorage.setItem(key, JSON.stringify({ t: Date.now() + ttl, v: val }));
+    } catch { /* ignore */ }
+  }
+  function getCacheScalar(key) {
+    try {
+      const obj = JSON.parse(localStorage.getItem(key) || "null");
+      if (!obj || typeof obj !== "object") return null;
+      if (typeof obj.t !== "number") return null;
+      if (Date.now() > obj.t) return null;
+      return obj.v;
+    } catch { return null; }
+  }
+
+  /* ========================= Reveal cards ========================= */
   const revealObserver = new IntersectionObserver(
     (entries, obs) => {
       for (const e of entries) {
         if (e.isIntersecting) {
-          e.target.classList.add("reveal");
-          obs.unobserve(e.target);
+          e.target.classList.add("reveal"); obs.unobserve(e.target);
         }
       }
     },
@@ -17,11 +79,11 @@
   );
   document.querySelectorAll(".card").forEach((el) => revealObserver.observe(el));
 
-  /* ================= Footer year ================= */
+  /* ========================= Footer year ========================= */
   const yearEl = $("#year");
   if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 
-  /* ================= Header hide/show ================= */
+  /* ========================= Header hide/show ========================= */
   document.addEventListener("DOMContentLoaded", () => {
     const headerEl = document.querySelector("header");
     if (!headerEl) return;
@@ -34,44 +96,25 @@
     window.addEventListener("resize", setHeaderHeight, { passive: true });
     window.addEventListener("load", setHeaderHeight);
 
-    const TOP_PIN = 80;
-    const TOL = 8;
-    let lastY = window.scrollY || 0;
-    let ticking = false;
+    const TOP_PIN = 80, TOL = 8;
+    let lastY = window.scrollY || 0, ticking = false;
 
     const apply = () => {
       const y = Math.max(0, window.scrollY || 0);
-      if (y <= TOP_PIN) {
-        headerEl.classList.remove("nav-hidden");
-        lastY = y; ticking = false; return;
-      }
-      if (y > lastY + TOL) {
-        headerEl.classList.add("nav-hidden");
-        lastY = y;
-      } else if (y < lastY - TOL) {
-        headerEl.classList.remove("nav-hidden");
-        lastY = y;
-      }
+      if (y <= TOP_PIN) { headerEl.classList.remove("nav-hidden"); lastY = y; ticking = false; return; }
+      if (y > lastY + TOL) { headerEl.classList.add("nav-hidden"); lastY = y; }
+      else if (y < lastY - TOL) { headerEl.classList.remove("nav-hidden"); lastY = y; }
       ticking = false;
     };
-
     apply();
-    window.addEventListener(
-      "scroll",
-      () => {
-        if (!ticking) {
-          ticking = true;
-          requestAnimationFrame(apply);
-        }
-      },
-      { passive: true }
-    );
+    window.addEventListener("scroll", () => {
+      if (!ticking) { ticking = true; requestAnimationFrame(apply); }
+    }, { passive: true });
     window.addEventListener("resize", () => { lastY = window.scrollY || 0; });
   });
 
-  /* ================= Lightbox ================= */
+  /* ========================= Lightbox ========================= */
   let modal, modalImg, previousOverflow;
-
   function ensureLightbox() {
     if (modal) return;
     modal = document.createElement("div");
@@ -102,26 +145,21 @@
       const isImg = e.target === modalImg;
       if (isBackdrop || isImg) closeLightbox();
     });
-    window.addEventListener(
-      "keydown",
-      (e) => { if (e.key === "Escape") closeLightbox(); },
-      { passive: true }
-    );
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeLightbox();
+    }, { passive: true });
   }
-
   function openLightbox(src) {
     ensureLightbox();
-    const abs =
-      src instanceof HTMLImageElement
-        ? src.currentSrc || src.src
-        : String(src || "");
+    const abs = src instanceof HTMLImageElement
+      ? src.currentSrc || src.src
+      : String(src || "");
     modalImg.src = abs;
     previousOverflow = document.documentElement.style.overflow;
     document.documentElement.style.overflow = "hidden";
     modal.setAttribute("aria-hidden", "false");
     modal.classList.add("is-open");
   }
-
   function closeLightbox() {
     if (!modal) return;
     modal.setAttribute("aria-hidden", "true");
@@ -130,86 +168,116 @@
     document.documentElement.style.overflow = previousOverflow || "";
   }
 
-  /* ===============================================================
-     4) Impressions banner: low-request discovery + caching
-     =============================================================== */
+  /* ========================= Numbered image discovery =========================
+     Minimizes requests:
+     - quick sniff to find first hit (small range),
+     - then NARROWS to that pattern + extension,
+     - stops after small gaps,
+     - caches result in localStorage.
+  ========================================================================= */
+  const DEFAULT_EXTS = ["webp", "jpg", "jpeg", "png"];
+  const DEFAULT_PATS = [
+    (i, ext) => `impression-${i}.${ext}`,
+    (i, ext) => `img-${i}.${ext}`,
+    (i, ext) => `photo-${i}.${ext}`,
+    (i, ext) => `${i}.${ext}`,
+  ];
+  function inferFromUrl(url, base) {
+    // returns {patFn, ext} if we can infer a pattern
+    try {
+      const name = url.replace(base, "");
+      const m = /^(impression-|img-|photo-)?(\d+)\.(webp|jpg|jpeg|png)$/i.exec(name);
+      if (!m) return null;
+      const prefix = m[1] || "";
+      const ext = m[3].toLowerCase();
+      const patFn = (i, e) => `${prefix}${i}.${e}`;
+      return { patFn, ext };
+    } catch { return null; }
+  }
+  async function discoverNumberedImages(base, {
+    maxIndex = 120,
+    sniffMaxIndex = 12,
+    stopAfterGap = 4,
+    cacheKey = `imglist:${base}:v3`,
+    ttl = CACHE_TTL_MS,
+  } = {}) {
+    // cache
+    const cached = getCache(cacheKey);
+    if (cached && cached.length) return cached;
+
+    await detectProbeMode("assets/img/logo/logo.png");
+
+    // Sniff a first hit quickly
+    let firstHit = null, firstI = null, firstPat = null, firstExt = null;
+    outer: for (let i = 1; i <= sniffMaxIndex; i++) {
+      for (const ext of DEFAULT_EXTS) {
+        for (const pat of DEFAULT_PATS) {
+          const url = base + pat(i, ext);
+          // eslint-disable-next-line no-await-in-loop
+          if (await probeExists(url)) {
+            firstHit = url; firstI = i; firstPat = pat; firstExt = ext;
+            break outer;
+          }
+        }
+      }
+    }
+    if (!firstHit) { setCache(cacheKey, [], 5 * 60 * 1000); return []; }
+
+    // Narrow to inferred pattern & ext for the rest
+    const inferred = inferFromUrl(firstHit, base);
+    const patterns = inferred ? [inferred.patFn] : [firstPat];
+    const exts = inferred ? [inferred.ext] : [firstExt];
+
+    const out = [firstHit];
+    let misses = 0;
+    for (let i = firstI + 1; i <= maxIndex; i++) {
+      let hit = null;
+      for (const ext of exts) {
+        for (const pat of patterns) {
+          const url = base + pat(i, ext);
+          // eslint-disable-next-line no-await-in-loop
+          if (await probeExists(url)) { hit = url; break; }
+        }
+        if (hit) break;
+      }
+      if (hit) { out.push(hit); misses = 0; }
+      else { misses += 1; if (misses >= stopAfterGap) break; }
+    }
+
+    setCache(cacheKey, out, ttl);
+    return out;
+  }
+
+  /* ========================= Impressions banner ========================= */
   document.addEventListener("DOMContentLoaded", () => {
     const track = $("#impressions-track");
     const banner = track?.parentElement;
     if (!track || !banner) return;
 
-    const MAX_VISIBLE = 24;   // how many to show
-    const MAX_INDEX = 80;     // highest number to try
-    const MISS_LIMIT = 20;    // stop after N consecutive misses
-    const IMG_W = 188, IMG_H = 188;
-
+    const MAX_VISIBLE = 24;
     const base = "assets/img/impressions/";
-    const exts = ["webp", "jpg", "jpeg", "png"];
-    const patterns = [
-      (i, ext) => `impression-${i}.${ext}`,
-      (i, ext) => `img-${i}.${ext}`,
-      (i, ext) => `photo-${i}.${ext}`,
-      (i, ext) => `${i}.${ext}`,
-    ];
-
-    const ssKey = "impr-srcs:v1"; // bump v# if you change logic
-
-    const headExists = async (url) => {
-      try {
-        const res = await fetch(url, { method: "HEAD", cache: "no-store" });
-        return res.ok;
-      } catch {
-        return false;
-      }
-    };
-
-    const discoverSequential = async () => {
-      // if developer prefilled <img> in markup, use those (0 extra requests)
-      let preset = Array.from(track.querySelectorAll("img"))
-        .map((el) => el.getAttribute("src"))
-        .filter(Boolean);
-      if (preset.length) return Array.from(new Set(preset)).slice(0, MAX_VISIBLE);
-
-      // sessionStorage cache
-      try {
-        const cached = JSON.parse(sessionStorage.getItem(ssKey) || "null");
-        if (Array.isArray(cached) && cached.length) return cached;
-      } catch {}
-
-      const found = [];
-      let miss = 0;
-      for (let i = 1; i <= MAX_INDEX; i++) {
-        let hitUrl = null;
-        for (const ext of exts) {
-          for (const pat of patterns) {
-            const url = base + pat(i, ext);
-            // eslint-disable-next-line no-await-in-loop
-            const ok = await headExists(url);
-            if (ok) { hitUrl = url; break; }
-          }
-          if (hitUrl) break;
-        }
-        if (hitUrl) {
-          found.push(hitUrl);
-          miss = 0;
-          if (found.length >= MAX_VISIBLE) break;
-        } else {
-          miss += 1;
-          if (miss >= MISS_LIMIT && found.length) break;
-        }
-      }
-
-      try { sessionStorage.setItem(ssKey, JSON.stringify(found)); } catch {}
-      return found;
-    };
 
     const build = async () => {
       obs && obs.disconnect();
 
-      const sources = await discoverSequential();
+      // Use any preset <img> first (0 extra requests)
+      let sources = Array.from(track.querySelectorAll("img"))
+        .map((el) => el.getAttribute("src"))
+        .filter(Boolean);
+
+      if (!sources.length) {
+        sources = await discoverNumberedImages(base, {
+          maxIndex: 60,
+          sniffMaxIndex: 10,
+          stopAfterGap: 5,
+          cacheKey: `impr:${base}:v3`,
+        });
+      }
       if (!sources.length) return;
 
-      // Build track (one set + duplicate for loop)
+      // slice to visible amount and duplicate for loop
+      const subset = sources.slice(0, MAX_VISIBLE);
+
       track.innerHTML = "";
       const addSet = (srcs) => {
         const frag = document.createDocumentFragment();
@@ -218,16 +286,15 @@
           img.src = src;
           img.decoding = "async";
           img.loading = "lazy";
-          img.width = IMG_W;
-          img.height = IMG_H;
+          img.width = 188;
+          img.height = 188;
           frag.appendChild(img);
         }
         track.appendChild(frag);
       };
-      addSet(sources);
-      addSet(sources);
+      addSet(subset);
+      addSet(subset);
 
-      // Tune animation speed by real width
       requestAnimationFrame(() => {
         const half = track.scrollWidth / 2;
         if (half > 0) {
@@ -237,24 +304,17 @@
         }
       });
 
-      track.addEventListener(
-        "click",
-        (e) => {
-          const img = e.target.closest("img");
-          if (img) openLightbox(img);
-        },
-        { passive: true }
-      );
+      track.addEventListener("click", (e) => {
+        const img = e.target.closest("img");
+        if (img) openLightbox(img);
+      }, { passive: true });
     };
 
-    // Lazy build when banner near viewport
     let obs;
     const startWhenNear = () => {
       obs = new IntersectionObserver(
         (entries) => {
-          for (const e of entries) {
-            if (e.isIntersecting) { build(); return; }
-          }
+          for (const e of entries) if (e.isIntersecting) { build(); return; }
         },
         { root: null, rootMargin: "600px 0px", threshold: 0.01 }
       );
@@ -266,52 +326,70 @@
     if (visible) build(); else startWhenNear();
   });
 
-  /* ================= Impressionen card (index.html) ================= */
+  /* ========================= Impressionen card (index.html) ========================= */
   document.addEventListener("DOMContentLoaded", async () => {
     const linksWrap = $("#gallery-links");
     if (!linksWrap) return;
 
-    try {
-      const res = await fetch("assets/img/galeries/galleries.json", {
-        cache: "no-store",
-      });
-      if (!res.ok) throw new Error("No galleries.json");
-      const data = await res.json();
+    // Try both spellings to load manifest if present (optional convenience)
+    const CANDIDATE_PATHS = [
+      "assets/img/galeries/galleries.json",
+      "assets/img/galleries/galleries.json",
+    ];
+    const prettify = (s) =>
+      String(s || "")
+        .replace(/[-_]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .replace(/\b\w/g, (c) => c.toUpperCase());
 
-      const galleries = (data.galleries || [])
-        .filter(g => g && g.id)
-        .map(g => ({
-          id: g.id,
-          title: g.title || g.id.replace(/[-_]/g, " ").replace(/\b\w/g, c =>
-            c.toUpperCase()
-          ),
-          cover: g.cover || null
-        }));
+    const parseGalleries = (data) => {
+      try {
+        let arr = [];
+        if (Array.isArray(data)) arr = data;
+        else if (data && Array.isArray(data.galleries)) arr = data.galleries;
+        else return [];
+        return arr
+          .map((g) => typeof g === "string"
+            ? { id: g, title: prettify(g) }
+            : (g && typeof g.id === "string")
+              ? { id: g.id, title: g.title || prettify(g.id) }
+              : null)
+          .filter(Boolean);
+      } catch { return []; }
+    };
 
-      if (!galleries.length) {
-        linksWrap.innerHTML = "<p>Keine Galerien verfügbar.</p>";
-        return;
-      }
-
-      const frag = document.createDocumentFragment();
-      for (const g of galleries) {
-        const a = document.createElement("a");
-        a.className = "btn";
-        a.href = `galerie.html?g=${encodeURIComponent(g.id)}&t=${
-          encodeURIComponent(g.title)
-        }`;
-        a.textContent = g.title;
-        frag.appendChild(a);
-      }
-      linksWrap.innerHTML = "";
-      linksWrap.appendChild(frag);
-    } catch (e) {
-      linksWrap.innerHTML = "<p>Keine Galerien verfügbar.</p>";
+    let galleries = [];
+    for (const url of CANDIDATE_PATHS) {
+      try {
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) continue;
+        const data = await res.json();
+        const parsed = parseGalleries(data);
+        if (parsed.length) { galleries = parsed; break; }
+      } catch { /* ignore */ }
     }
+
+    if (!galleries.length) {
+      linksWrap.innerHTML = "<p>Keine Galerien verfügbar.</p>";
+      return;
+    }
+
+    const frag = document.createDocumentFragment();
+    for (const g of galleries) {
+      const a = document.createElement("a");
+      a.className = "btn";
+      a.href = `galerie.html?g=${encodeURIComponent(g.id)}&t=${
+        encodeURIComponent(g.title)
+      }`;
+      a.textContent = g.title;
+      frag.appendChild(a);
+    }
+    linksWrap.innerHTML = "";
+    linksWrap.appendChild(frag);
   });
 
-  /* ================= Galerie page loader (galerie.html) ============== */
-  /* ================= Galerie page loader (galerie.html) ============== */
+  /* ========================= galerie.html loader ========================= */
   document.addEventListener("DOMContentLoaded", async () => {
     const grid = $("#galerie-grid");
     const titleEl = $("#galerie-title");
@@ -338,7 +416,7 @@
     const finalTitle = tParam ? decodeURIComponent(tParam) : prettify(g);
     titleEl.textContent = `Galerie: ${finalTitle}`;
 
-    // "Zurück" button (styled like other .btn)
+    // Ensure "Zurück" button
     let actions = document.querySelector(".gallery-actions");
     if (!actions) {
       actions = document.createElement("div");
@@ -356,80 +434,34 @@
 
     if (descEl) descEl.textContent = "Bilder werden geladen …";
 
-    // ---- Low-request discovery with HEAD + caching & early stop ----
-    const exts = ["webp", "jpg", "jpeg", "png"];
-    const patterns = [
-      (i, ext) => `img-${i}.${ext}`,
-      (i, ext) => `photo-${i}.${ext}`,
-      (i, ext) => `impression-${i}.${ext}`,
-      (i, ext) => `${i}.${ext}`,
-    ];
-    const MAX_INDEX = 300;   // upper bound to try
-    const MISS_LIMIT = 30;   // stop after N consecutive misses
-    const perPageKey = (root) => `gal:${root}:${g}:v1`;
+    await detectProbeMode("assets/img/logo/logo.png");
 
-    const headExists = async (url) => {
-      try {
-        const res = await fetch(url, { method: "HEAD", cache: "no-store" });
-        return res.ok;
-      } catch {
-        return false;
-      }
-    };
+    // Prefer a remembered root per gallery to avoid probing both
+    const rootKey = `gal:root:${g}:v1`;
+    let root = getCacheScalar(rootKey);
 
-    const discoverFromRoot = async (root) => {
-      // session cache per root (galeries/ or galleries/)
-      try {
-        const cached = JSON.parse(sessionStorage.getItem(perPageKey(root)) || "null");
-        if (Array.isArray(cached) && cached.length) return cached;
-      } catch {}
-
-      const base = `${root}/${encodeURIComponent(g)}/`;
-      const found = [];
-      let miss = 0;
-      let seenAny = false;
-
-      for (let i = 1; i <= MAX_INDEX; i++) {
-        let urlHit = null;
-        for (const ext of exts) {
-          for (const pat of patterns) {
-            const url = base + pat(i, ext);
-            // eslint-disable-next-line no-await-in-loop
-            const ok = await headExists(url);
-            if (ok) { urlHit = url; break; }
-          }
-          if (urlHit) break;
-        }
-        if (urlHit) {
-          seenAny = true;
-          found.push(urlHit);
-          miss = 0;
-          // allow large galleries; remove this cap if you like
-          if (found.length >= 120) break;
-        } else {
-          miss += 1;
-          if (miss >= MISS_LIMIT && seenAny) break;
-        }
-      }
-
-      try {
-        sessionStorage.setItem(perPageKey(root), JSON.stringify(found));
-      } catch {}
-
-      return found;
-    };
-
-    // Try both spellings; first with your current one
-    const roots = [
-      "assets/img/galeries",
-      "assets/img/galleries",
-    ];
+    const roots = root
+      ? [root] // already known
+      : ["assets/img/galeries", "assets/img/galleries"];
 
     let files = [];
     for (const r of roots) {
-      // eslint-disable-next-line no-await-in-loop
-      const arr = await discoverFromRoot(r);
-      if (arr.length) { files = arr; break; }
+      const base = `${r}/${encodeURIComponent(g)}/`;
+      // Try cached list first
+      const list = await discoverNumberedImages(base, {
+        maxIndex: 180,
+        sniffMaxIndex: 12,
+        stopAfterGap: 5,
+        cacheKey: `gal:list:${base}:v3`,
+      });
+      if (list.length) {
+        files = list;
+        // remember working root (for future loads)
+        if (!root) setCacheScalar(rootKey, r);
+        break;
+      }
+      // if we had a remembered root but found nothing (moved?), drop it
+      if (root && !list.length) setCacheScalar(rootKey, null, 1);
     }
 
     if (!files.length) {
@@ -438,7 +470,6 @@
     }
 
     if (descEl) descEl.textContent = `${files.length} Bilder`;
-
     const frag = document.createDocumentFragment();
     for (const src of files) {
       const img = document.createElement("img");
