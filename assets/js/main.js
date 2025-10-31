@@ -1,14 +1,9 @@
 (() => {
   "use strict";
 
-  /* ===============================================================
-     0) Small helpers
-     =============================================================== */
   const $ = (sel, ctx = document) => ctx.querySelector(sel);
 
-  /* ===============================================================
-     1) Reveal cards on scroll (IntersectionObserver)
-     =============================================================== */
+  /* ================= Reveal cards ================= */
   const revealObserver = new IntersectionObserver(
     (entries, obs) => {
       for (const e of entries) {
@@ -22,57 +17,59 @@
   );
   document.querySelectorAll(".card").forEach((el) => revealObserver.observe(el));
 
-  /* ===============================================================
-     2) Auto-set year in footer
-     =============================================================== */
-  const yearEl = document.getElementById("year");
+  /* ================= Footer year ================= */
+  const yearEl = $("#year");
   if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 
-  /* ===============================================================
-     2.5) Header: hide on scroll down, show on scroll up
-     =============================================================== */
-  const headerEl = document.querySelector("header");
-  const TOP_PIN = 80;
-  const TOL = 8;
-  let lastY = window.scrollY || 0;
-  let ticking = false;
+  /* ================= Header hide/show ================= */
+  document.addEventListener("DOMContentLoaded", () => {
+    const headerEl = document.querySelector("header");
+    if (!headerEl) return;
 
-  function updateHeaderOnScroll() {
-    if (!headerEl) {
-      ticking = false;
-      return;
-    }
-    const y = Math.max(0, window.scrollY || 0);
-    if (y <= TOP_PIN) {
-      headerEl.classList.remove("nav-hidden");
-      lastY = y;
-      ticking = false;
-      return;
-    }
-    if (y > lastY + TOL) {
-      headerEl.classList.add("nav-hidden");   // down → hide
-      lastY = y;
-    } else if (y < lastY - TOL) {
-      headerEl.classList.remove("nav-hidden"); // up → show
-      lastY = y;
-    }
-    ticking = false;
-  }
-  updateHeaderOnScroll();
-  window.addEventListener(
-    "scroll",
-    () => {
-      if (!ticking) {
-        ticking = true;
-        requestAnimationFrame(updateHeaderOnScroll);
+    const setHeaderHeight = () => {
+      const h = headerEl.offsetHeight || 0;
+      document.documentElement.style.setProperty("--header-h", `${h}px`);
+    };
+    setHeaderHeight();
+    window.addEventListener("resize", setHeaderHeight, { passive: true });
+    window.addEventListener("load", setHeaderHeight);
+
+    const TOP_PIN = 80;
+    const TOL = 8;
+    let lastY = window.scrollY || 0;
+    let ticking = false;
+
+    const apply = () => {
+      const y = Math.max(0, window.scrollY || 0);
+      if (y <= TOP_PIN) {
+        headerEl.classList.remove("nav-hidden");
+        lastY = y; ticking = false; return;
       }
-    },
-    { passive: true }
-  );
+      if (y > lastY + TOL) {
+        headerEl.classList.add("nav-hidden");
+        lastY = y;
+      } else if (y < lastY - TOL) {
+        headerEl.classList.remove("nav-hidden");
+        lastY = y;
+      }
+      ticking = false;
+    };
 
-  /* ===============================================================
-     3) Image lightbox (in-page, no button)
-     =============================================================== */
+    apply();
+    window.addEventListener(
+      "scroll",
+      () => {
+        if (!ticking) {
+          ticking = true;
+          requestAnimationFrame(apply);
+        }
+      },
+      { passive: true }
+    );
+    window.addEventListener("resize", () => { lastY = window.scrollY || 0; });
+  });
+
+  /* ================= Lightbox ================= */
   let modal, modalImg, previousOverflow;
 
   function ensureLightbox() {
@@ -133,28 +130,19 @@
     document.documentElement.style.overflow = previousOverflow || "";
   }
 
-  /* ===============================================================
-     4) Faster impressions banner
-        - Build only when near viewport
-        - Limit image count
-        - Concurrency-limited loading
-        - Eager first few, lazy rest
-        - Width/height attrs for CLS
-     =============================================================== */
+  /* ================= Fast impressions banner ================= */
   document.addEventListener("DOMContentLoaded", () => {
     const track = $("#impressions-track");
     const banner = track?.parentElement;
     if (!track || !banner) return;
 
-    // ------ Tunables (adjust if you like) ------
-    const MAX_VISIBLE = 24;       // total unique images shown
-    const MAX_DISCOVER = 60;      // how many indices to probe at most
-    const CONCURRENCY = 6;        // parallel loads
-    const EAGER_COUNT = 4;        // first N images eager/high priority
-    const IMG_W = 188;            // must match CSS
-    const IMG_H = 188;            // must match CSS
+    const MAX_VISIBLE = 24;
+    const MAX_DISCOVER = 60;
+    const CONCURRENCY = 6;
+    const EAGER_COUNT = 4;
+    const IMG_W = 188;
+    const IMG_H = 188;
 
-    // Discovery config: prefer webp, then jpg/jpeg/png
     const base = "assets/img/impressions/";
     const exts = ["webp", "jpg", "jpeg", "png"];
     const patterns = [
@@ -173,7 +161,6 @@
       });
 
     const findExisting = async (i) => {
-      // Try fewer combos first to cut requests
       for (const ext of exts) {
         for (const pat of patterns) {
           // eslint-disable-next-line no-await-in-loop
@@ -184,16 +171,13 @@
       return null;
     };
 
-    // Build logic is triggered only when banner nears viewport
     const build = async () => {
       obs && obs.disconnect();
 
-      // Prefer preset <img> inside the track (zero probes)
       let sources = Array.from(track.querySelectorAll("img"))
         .map((el) => el.getAttribute("src"))
         .filter(Boolean);
 
-      // Else, probe a limited range
       if (!sources.length) {
         const tasks = [];
         const limit = Math.max(MAX_VISIBLE, Math.min(MAX_DISCOVER, 120));
@@ -201,16 +185,13 @@
         const results = await Promise.all(tasks);
         sources = results.filter(Boolean);
       }
-
       if (!sources.length) return;
 
-      // Take a subset to keep the DOM light
       const unique = Array.from(new Set(sources));
       const subset = unique.slice(0, MAX_VISIBLE);
 
       track.innerHTML = "";
 
-      // Concurrency-limited loader
       const loadQueue = (srcs, onReady) =>
         new Promise((resolve) => {
           let idx = 0;
@@ -226,8 +207,7 @@
               img.loading = idx <= EAGER_COUNT ? "eager" : "lazy";
               try { img.fetchPriority = idx <= EAGER_COUNT ? "high" : "auto"; }
               catch (_) {}
-              img.width = IMG_W;
-              img.height = IMG_H;
+              img.width = IMG_W; img.height = IMG_H;
 
               img.onload = () => {
                 onReady(img);
@@ -246,28 +226,19 @@
           pump();
         });
 
-      // Append first set as they load
       const firstSet = [];
       await loadQueue(subset, (img) => {
-        // Wrap in element consistent with existing CSS
         const el = document.createElement("img");
-        el.src = img.src;
-        el.decoding = img.decoding;
-        el.loading = img.loading;
-        el.width = IMG_W;
-        el.height = IMG_H;
+        el.src = img.src; el.decoding = img.decoding; el.loading = img.loading;
+        el.width = IMG_W; el.height = IMG_H;
         track.appendChild(el);
         firstSet.push(el);
       });
 
-      // Duplicate for seamless loop (cache hit; fast)
       const secondSetFrag = document.createDocumentFragment();
-      for (const el of firstSet) {
-        secondSetFrag.appendChild(el.cloneNode(true));
-      }
+      for (const el of firstSet) secondSetFrag.appendChild(el.cloneNode(true));
       track.appendChild(secondSetFrag);
 
-      // Tune animation after layout
       requestAnimationFrame(() => {
         const halfWidth = track.scrollWidth / 2;
         if (halfWidth > 0) {
@@ -277,24 +248,22 @@
         }
       });
 
-      // Click → open lightbox
-      track.addEventListener("click", (e) => {
-        const img = e.target.closest("img");
-        if (!img) return;
-        openLightbox(img);
-      }, { passive: true });
+      track.addEventListener(
+        "click",
+        (e) => {
+          const img = e.target.closest("img");
+          if (!img) return; openLightbox(img);
+        },
+        { passive: true }
+      );
     };
 
-    // Only build when near viewport (improves initial load)
     let obs;
     const startWhenNear = () => {
       obs = new IntersectionObserver(
         (entries) => {
           for (const e of entries) {
-            if (e.isIntersecting) {
-              build();
-              return;
-            }
+            if (e.isIntersecting) { build(); return; }
           }
         },
         { root: null, rootMargin: "600px 0px", threshold: 0.01 }
@@ -302,11 +271,135 @@
       obs.observe(banner);
     };
 
-    // If already visible, build immediately; else observe
     const rect = banner.getBoundingClientRect();
     const alreadyVisible =
       rect.top < window.innerHeight + 600 && rect.bottom > -600;
-    if (alreadyVisible) build();
-    else startWhenNear();
+    if (alreadyVisible) build(); else startWhenNear();
+  });
+
+  /* ================= Impressionen card (index.html) ================= */
+  document.addEventListener("DOMContentLoaded", async () => {
+    const linksWrap = $("#gallery-links");
+    if (!linksWrap) return;
+
+    try {
+      const res = await fetch("assets/img/galeries/galleries.json", {
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error("No galleries.json");
+      const data = await res.json();
+
+      const galleries = (data.galleries || [])
+        .filter(g => g && g.id)
+        .map(g => ({
+          id: g.id,
+          title: g.title || g.id.replace(/[-_]/g, " ").replace(/\b\w/g, c =>
+            c.toUpperCase()
+          ),
+          cover: g.cover || null
+        }));
+
+      if (!galleries.length) {
+        linksWrap.innerHTML = "<p>Keine Galerien verfügbar.</p>";
+        return;
+      }
+
+      const frag = document.createDocumentFragment();
+      for (const g of galleries) {
+        const a = document.createElement("a");
+        a.className = "btn";
+        a.href = `galerie.html?g=${encodeURIComponent(g.id)}`;
+        a.textContent = g.title;
+        frag.appendChild(a);
+      }
+      linksWrap.innerHTML = "";
+      linksWrap.appendChild(frag);
+    } catch (e) {
+      linksWrap.innerHTML = "<p>Keine Galerien verfügbar.</p>";
+    }
+  });
+
+  /* ================= Galerie page loader (galerie.html) ============== */
+  document.addEventListener("DOMContentLoaded", async () => {
+    const grid = $("#galerie-grid");
+    const titleEl = $("#galerie-title");
+    const descEl = $("#galerie-desc");
+    if (!grid || !titleEl) return;
+
+    const params = new URLSearchParams(location.search);
+    const g = params.get("g");
+    if (!g) {
+      titleEl.textContent = "Galerie";
+      descEl.textContent = "Keine Galerie gewählt.";
+      return;
+    }
+
+    titleEl.textContent = `Galerie: ${g}`;
+    descEl.textContent = "Bilder werden geladen …";
+
+    // Discover images inside assets/img/galeries/<g>/
+    const base = `assets/img/galeries/${encodeURIComponent(g)}/`;
+    const exts = ["webp", "jpg", "jpeg", "png"];
+    const patterns = [
+      (i, ext) => `img-${i}.${ext}`,
+      (i, ext) => `photo-${i}.${ext}`,
+      (i, ext) => `impression-${i}.${ext}`,
+      (i, ext) => `${i}.${ext}`,
+    ];
+    const MAX = 200;
+    const CONCURRENCY = 8;
+
+    const probe = (src) =>
+      new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(src);
+        img.onerror = () => resolve(null);
+        img.src = src;
+      });
+
+    const discoverOne = async (i) => {
+      for (const ext of exts) {
+        for (const pat of patterns) {
+          // eslint-disable-next-line no-await-in-loop
+          const ok = await probe(base + pat(i, ext));
+          if (ok) return ok;
+        }
+      }
+      return null;
+    };
+
+    const tasks = [];
+    for (let i = 1; i <= MAX; i++) tasks.push(discoverOne(i));
+    const chunks = [];
+    for (let i = 0; i < tasks.length; i += CONCURRENCY) {
+      chunks.push(tasks.slice(i, i + CONCURRENCY));
+    }
+
+    const found = [];
+    for (const chunk of chunks) {
+      // eslint-disable-next-line no-await-in-loop
+      const res = await Promise.all(chunk);
+      for (const s of res) if (s) found.push(s);
+      if (found.length >= 120) break; // enough images
+    }
+
+    if (!found.length) {
+      descEl.textContent = "Keine Bilder gefunden.";
+      return;
+    }
+
+    descEl.textContent = `${found.length} Bilder`;
+    const frag = document.createDocumentFragment();
+    for (const src of found) {
+      const img = document.createElement("img");
+      img.src = src;
+      img.decoding = "async";
+      img.loading = "lazy";
+      img.width = 320;
+      img.height = 240;
+      img.addEventListener("click", () => openLightbox(img));
+      frag.appendChild(img);
+    }
+    grid.appendChild(frag);
   });
 })();
