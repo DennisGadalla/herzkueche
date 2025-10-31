@@ -171,7 +171,7 @@
     const halfWidth = track.scrollWidth / 2;
     if (halfWidth > 0) {
       const pxPerSec = 90;
-      const secs = Math.max(40, Math.round(halfWidth / pxPerSec));
+      const secs = Math.max(80, Math.round(halfWidth / pxPerSec));
       track.style.animationDuration = `${secs}s`;
     }
 
