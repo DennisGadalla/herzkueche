@@ -21,6 +21,9 @@
   --container-pad: 20px; /* passt zu .container padding */
   --logo-size: 84px;     /* Desktop-Logo-Größe */
   --logo-dip: 6px;       /* Logo „überragt“ die Linie leicht */
+
+  /* Header-Linie rechts verkürzen (Kollisionsschutz mit Button) */
+  --nav-line-right-gap: 160px;
 }
 
 @media (prefers-color-scheme: light) {
@@ -37,12 +40,19 @@
   }
 }
 
+@media (max-width: 900px) {
+  :root { --nav-line-right-gap: 120px; }
+}
+@media (max-width: 600px) {
+  :root { --nav-line-right-gap: 96px; }
+}
+
 /* ===========================
    Reset / Base
    =========================== */
 * { box-sizing: border-box; }
 html, body { height: 100%; }
-html { overflow-x: hidden; }   /* keine horizontale Seiten-Scroll */
+html { overflow-x: hidden; }
 body {
   margin: 0;
   color: var(--text);
@@ -68,10 +78,13 @@ header {
   top: 0;
   z-index: 50;
   backdrop-filter: saturate(140%) blur(10px);
-  /* wir zeichnen die Linie selbst (siehe .nav::after) */
-  border-bottom: none;
+  border-bottom: none; /* Linie zeichnen wir selbst */
   background: color-mix(in oklab, var(--bg) 80%, transparent);
+  overflow: visible; /* nichts abschneiden */
 }
+
+/* ---- Unstick state (added) ---- */
+header.unstuck { position: static !important; }
 
 .nav {
   position: relative;
@@ -79,19 +92,23 @@ header {
   align-items: center;
   justify-content: space-between;
   padding: 12px 0 18px; /* unten Luft für Logo-Dip */
+  isolation: isolate;   /* separater Stacking-Context */
+  overflow: visible;
 }
 
-/* Weiche Linie unterhalb der Nav – startet NACH dem Logo */
+/* Weiche Linie unterhalb der Nav – startet NACH dem Logo und endet
+   VOR dem Button (per --nav-line-right-gap) */
 .nav::after {
   content: "";
   position: absolute;
   left: calc(var(--container-pad) + var(--logo-size) + 14px);
-  right: var(--container-pad);
-  bottom: 14px;
+  right: calc(var(--container-pad));
+  bottom: 12px;                 /* leicht nach oben: kollidiert nicht */
   height: 1px;
   background: var(--border);
   pointer-events: none;
   opacity: 1;
+  z-index: 0;
 }
 
 /* Brand/Logo */
@@ -100,6 +117,7 @@ header {
   align-items: center;
   gap: 10px;
   font-weight: 700;
+  overflow: visible;
 }
 
 .brand-logo {
@@ -110,7 +128,6 @@ header {
   overflow: hidden;
   object-fit: cover;
   object-position: center;
-  /* leichter permanenter Zoom + minimal nach unten versetzt */
   transform: translateY(var(--logo-dip)) scale(1.15);
   transition: transform .35s ease, opacity .3s ease;
 }
@@ -120,25 +137,40 @@ header {
 }
 
 /* Links / Buttons im Header */
-.links { display: flex; gap: 18px; align-items: center; }
+.links {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  padding-left: 8px;      /* optischer Abstand links am Button */
+  position: relative;
+  z-index: 1;             /* sicher über der Linie */
+  overflow: visible;
+}
 
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 16px;
+  padding: 9px 14px;      /* etwas kompakter, bleibt optisch gleich */
   border-radius: 12px;
   font-weight: 600;
   cursor: pointer;
-  border: 1px solid var(--border);
-  background: var(--card);
+  border: 0px solid var(--border); /* fix: kein 'px' Typo */
+  background: var(--border);
   transition: transform .06s ease, box-shadow .3s ease;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  z-index: 1;             /* sicher über der Linie */
 }
 .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
 .btn.primary {
   background: var(--accent);
   color: #fff;
   border-color: color-mix(in oklab, var(--accent) 60%, var(--border));
+}
+.btn:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
 }
 
 .tag {
@@ -182,7 +214,7 @@ header {
 
 .hero {
   display: flex;
-  flex-direction: column; /* mobil: gestapelt */
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 24px;
@@ -240,7 +272,7 @@ header {
   .hero-portrait { width: 360px; height: 360px; }
 }
 
-/* (Legacy) Hero-Background-Slideshow – zur evtl. späteren Nutzung belassen */
+/* (Legacy) Hero-Background-Slideshow – zur evtl. späteren Nutzung */
 .hero-bg-slideshow {
   position: absolute;
   inset: 0;
@@ -288,15 +320,30 @@ section { padding: 56px 0; }
     transform .6s cubic-bezier(.2, .8, .2, 1),
     opacity .6s ease,
     box-shadow .3s ease;
+  position: relative; /* for corner logos */
 }
 .card:hover { transform: translateY(0) scale(1.01); }
 .reveal { opacity: 1; transform: translateY(0) scale(1); }
 
-/* Timeline */
-.timeline {
-  border-left: 2px solid var(--border);
-  padding-left: 16px;
+/* ===== Card corner logos ===== */
+.card-logo {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+  opacity: 0.9;
+  transition: transform .18s ease, opacity .18s ease;
+  pointer-events: none;
 }
+.card:hover .card-logo { transform: scale(1.04); opacity: 1; }
+@media (max-width: 420px) {
+  .card-logo { width: 38px; height: 38px; }
+}
+
+/* Timeline */
+.timeline { border-left: 2px solid var(--border); padding-left: 16px; }
 .t-item { margin: 14px 0; position: relative; }
 .t-item::before {
   content: "";
@@ -362,13 +409,12 @@ footer {
 /* ===========================
    Impressions – Scrolling Banner
    =========================== */
-/* ================= Impressions Scrolling Banner ================= */
 .impressions-banner {
   position: relative;
   width: 100%;
-  height: 200px;              /* band height */
-  padding-top: 8px;           /* headroom so hover zoom isn't clipped */
-  overflow: hidden;           /* keep bars hidden */
+  height: 200px;          /* band height */
+  padding-top: 8px;       /* headroom: hover-zoom clippt nicht */
+  overflow: hidden;
   border-top: none;
   border-bottom: none;
   background: var(--bg);
@@ -376,7 +422,7 @@ footer {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
-.impressions-banner::-webkit-scrollbar { width:0; height:0; }
+.impressions-banner::-webkit-scrollbar { width: 0; height: 0; }
 
 .impressions-track {
   display: flex;
@@ -384,9 +430,8 @@ footer {
   width: max-content;
   animation: scrollImpressions 120s linear infinite;
 }
-
 .impressions-banner img {
-  width: 188px;               /* < 200 so 1.06x stays inside */
+  width: 188px;           /* < 200 → 1.06x bleibt innerhalb */
   height: 188px;
   flex-shrink: 0;
   object-fit: cover;
@@ -399,21 +444,18 @@ footer {
   cursor: zoom-in;
 }
 .impressions-banner img:hover {
-  transform: scale(1.06);     /* 188 * 1.06 ≈ 199.3 < 200 */
+  transform: scale(1.06); /* 188 * 1.06 ≈ 199.3 < 200 */
   filter: brightness(.98) saturate(118%);
 }
 
-
 @keyframes scrollImpressions {
   0%   { transform: translateX(0); }
-  100% { transform: translateX(-50%); } /* Track hat Duplikat */
+  100% { transform: translateX(-50%); }
 }
 
 @media (max-width: 600px) {
   .impressions-banner img { width: 184px; height: 184px; }
 }
-
-
 
 /* ===========================
    Hero – Social Links
@@ -461,8 +503,7 @@ footer {
 }
 
 /* ===========================
-   Legal / Impressum
-   (schlicht, ohne Karte)
+   Legal / Impressum (schlicht)
    =========================== */
 .legal-wrap {
   max-width: 820px;
@@ -496,7 +537,6 @@ footer {
   opacity: .8;
 }
 /* Headings im Impressum: nur bold, nicht größer */
-.legal-wrap h1,
 .legal-wrap h2 {
   font-size: inherit;
   font-weight: 700;
@@ -505,33 +545,20 @@ footer {
 }
 .legal-wrap h1:first-child { margin-top: 0; }
 
-@media (max-width: 480px) {
-  .legal-wrap { padding: 28px 0 48px; }
-}
-
 /* ===== Fix: remove unwanted left bar on hover over text ===== */
-/* Never touch keyboard focus visuals */
 a:hover, p:hover, span:hover, li:hover,
 h1:hover, h2:hover, h3:hover, h4:hover, h5:hover, h6:hover {
   border-left: none !important;
-  outline: none;            /* hover only; focus stays intact */
-  box-shadow: none;         /* in case an extension injects one */
+  outline: none;
+  box-shadow: none;
 }
-
-/* Block injected pseudo-element bars */
 a::before, p::before, span::before, li::before,
 h1::before, h2::before, h3::before, h4::before, h5::before, h6::before {
   content: none !important;
   border-left: none !important;
   box-shadow: none !important;
 }
-
-/* Also prevent any left border on anchors in general */
-a {
-  border-left: none !important;
-}
-
-/* If the bar was a text-decoration trick, ensure only normal underline */
+a { border-left: none !important; }
 a {
   text-decoration-thickness: auto;
   text-underline-offset: auto;
