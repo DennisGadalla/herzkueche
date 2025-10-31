@@ -1,6 +1,4 @@
-{
-  "galleries": [
-    { "id": "pasta",   "title": "Pasta" },
-    { "id": "desserts", "title": "Desserts" }
-  ]
-}
+{ "galleries": [
+  { "id": "pasta",   "title": "Pasta",   "count": 5 },
+  { "id": "dessert", "title": "Dessert", "count": 4 }
+]}

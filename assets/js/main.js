@@ -101,9 +101,14 @@
 
     const apply = () => {
       const y = Math.max(0, window.scrollY || 0);
-      if (y <= TOP_PIN) { headerEl.classList.remove("nav-hidden"); lastY = y; ticking = false; return; }
+      if (y <= TOP_PIN) {
+        headerEl.classList.remove("nav-hidden"); lastY = y; ticking = false;
+        return;
+      }
       if (y > lastY + TOL) { headerEl.classList.add("nav-hidden"); lastY = y; }
-      else if (y < lastY - TOL) { headerEl.classList.remove("nav-hidden"); lastY = y; }
+      else if (y < lastY - TOL) {
+        headerEl.classList.remove("nav-hidden"); lastY = y;
+      }
       ticking = false;
     };
     apply();
@@ -173,7 +178,8 @@
      - quick sniff to find first hit (small range),
      - then NARROWS to that pattern + extension,
      - stops after small gaps,
-     - caches result in localStorage.
+     - caches result in localStorage,
+     - **caps total finds/requests via targetCount**.
   ========================================================================= */
   const DEFAULT_EXTS = ["webp", "jpg", "jpeg", "png"];
   const DEFAULT_PATS = [
@@ -183,7 +189,6 @@
     (i, ext) => `${i}.${ext}`,
   ];
   function inferFromUrl(url, base) {
-    // returns {patFn, ext} if we can infer a pattern
     try {
       const name = url.replace(base, "");
       const m = /^(impression-|img-|photo-)?(\d+)\.(webp|jpg|jpeg|png)$/i.exec(name);
@@ -198,18 +203,20 @@
     maxIndex = 120,
     sniffMaxIndex = 12,
     stopAfterGap = 4,
-    cacheKey = `imglist:${base}:v3`,
+    targetCount = Infinity,                // cap results + requests
+    cacheKey = `imglist:${base}:v4`,       // bump to v4
     ttl = CACHE_TTL_MS,
   } = {}) {
-    // cache
     const cached = getCache(cacheKey);
-    if (cached && cached.length) return cached;
+    if (cached && cached.length) return cached.slice(0, targetCount);
 
     await detectProbeMode("assets/img/logo/logo.png");
 
-    // Sniff a first hit quickly
+    const sniffMax = Math.min(
+      sniffMaxIndex, maxIndex, Math.max(1, targetCount)
+    );
     let firstHit = null, firstI = null, firstPat = null, firstExt = null;
-    outer: for (let i = 1; i <= sniffMaxIndex; i++) {
+    outer: for (let i = 1; i <= sniffMax; i++) {
       for (const ext of DEFAULT_EXTS) {
         for (const pat of DEFAULT_PATS) {
           const url = base + pat(i, ext);
@@ -223,7 +230,11 @@
     }
     if (!firstHit) { setCache(cacheKey, [], 5 * 60 * 1000); return []; }
 
-    // Narrow to inferred pattern & ext for the rest
+    if (targetCount <= 1) {
+      setCache(cacheKey, [firstHit], ttl);
+      return [firstHit];
+    }
+
     const inferred = inferFromUrl(firstHit, base);
     const patterns = inferred ? [inferred.patFn] : [firstPat];
     const exts = inferred ? [inferred.ext] : [firstExt];
@@ -231,6 +242,7 @@
     const out = [firstHit];
     let misses = 0;
     for (let i = firstI + 1; i <= maxIndex; i++) {
+      if (out.length >= targetCount) break;
       let hit = null;
       for (const ext of exts) {
         for (const pat of patterns) {
@@ -241,7 +253,10 @@
         if (hit) break;
       }
       if (hit) { out.push(hit); misses = 0; }
-      else { misses += 1; if (misses >= stopAfterGap) break; }
+      else {
+        misses += 1;
+        if (misses >= stopAfterGap) break;
+      }
     }
 
     setCache(cacheKey, out, ttl);
@@ -254,13 +269,13 @@
     const banner = track?.parentElement;
     if (!track || !banner) return;
 
-    const MAX_VISIBLE = 24;
+    const MAX_VISIBLE = 10; // fixed cap
     const base = "assets/img/impressions/";
 
     const build = async () => {
       obs && obs.disconnect();
 
-      // Use any preset <img> first (0 extra requests)
+      // Use preset <img> if present (0 requests)
       let sources = Array.from(track.querySelectorAll("img"))
         .map((el) => el.getAttribute("src"))
         .filter(Boolean);
@@ -268,14 +283,14 @@
       if (!sources.length) {
         sources = await discoverNumberedImages(base, {
           maxIndex: 60,
-          sniffMaxIndex: 10,
-          stopAfterGap: 5,
-          cacheKey: `impr:${base}:v3`,
+          sniffMaxIndex: Math.min(6, MAX_VISIBLE),
+          stopAfterGap: 3,
+          targetCount: MAX_VISIBLE,          // cap requests & results
+          cacheKey: `impr:${base}:v4`,
         });
       }
       if (!sources.length) return;
 
-      // slice to visible amount and duplicate for loop
       const subset = sources.slice(0, MAX_VISIBLE);
 
       track.innerHTML = "";
@@ -331,7 +346,6 @@
     const linksWrap = $("#gallery-links");
     if (!linksWrap) return;
 
-    // Try both spellings to load manifest if present (optional convenience)
     const CANDIDATE_PATHS = [
       "assets/img/galeries/galleries.json",
       "assets/img/galleries/galleries.json",
@@ -389,17 +403,34 @@
     linksWrap.appendChild(frag);
   });
 
-  /* ========================= galerie.html loader ========================= */
+  /* ================= Galerie page loader (galerie.html) ============== */
   document.addEventListener("DOMContentLoaded", async () => {
     const grid = $("#galerie-grid");
     const titleEl = $("#galerie-title");
     const descEl = $("#galerie-desc");
     if (!grid || !titleEl) return;
 
+    // Inject mild hover zoom effect for gallery images (scoped)
+    const styleId = "gallery-hover-zoom-style";
+    if (!document.getElementById(styleId)) {
+      const s = document.createElement("style");
+      s.id = styleId;
+      s.textContent = `
+        #galerie-grid img{
+          transition: transform .18s ease;
+          transform-origin: center;
+          will-change: transform;
+        }
+        #galerie-grid img:hover{
+          transform: scale(1.04);
+        }
+      `;
+      document.head.appendChild(s);
+    }
+
     const params = new URLSearchParams(location.search);
     const g = params.get("g");
     const tParam = params.get("t");
-
     if (!g) {
       titleEl.textContent = "Galerie";
       if (descEl) descEl.textContent = "Keine Galerie gewählt.";
@@ -416,52 +447,187 @@
     const finalTitle = tParam ? decodeURIComponent(tParam) : prettify(g);
     titleEl.textContent = `Galerie: ${finalTitle}`;
 
-    // Ensure "Zurück" button
+    // ---- Back button: reuse if present, dedupe, no visual change ----
     let actions = document.querySelector(".gallery-actions");
     if (!actions) {
       actions = document.createElement("div");
       actions.className = "gallery-actions";
       titleEl.insertAdjacentElement("afterend", actions);
     }
-    if (!actions.querySelector("a[data-back]")) {
-      const backLink = document.createElement("a");
+    // Find existing back links by attribute/id or visible text
+    const byAttr = Array.from(
+      document.querySelectorAll('a[data-back], a#galerie-back')
+    );
+    const byText = Array.from(document.querySelectorAll("a.btn")).filter((a) =>
+      (a.textContent || "").trim().toLowerCase() === "zurück"
+    );
+    const seen = new Set();
+    const candidates = [...byAttr, ...byText].filter((a) => {
+      if (seen.has(a)) return false; seen.add(a); return true;
+    });
+
+    let backLink = candidates[0];
+    if (!backLink) {
+      backLink = document.createElement("a");
       backLink.className = "btn";
-      backLink.href = "index.html#impressionen";
+      backLink.id = "galerie-back";
       backLink.setAttribute("data-back", "1");
+      backLink.href = "index.html#impressionen";
       backLink.textContent = "Zurück";
-      actions.appendChild(backLink);
+    } else {
+      // Ensure it looks like the standard button
+      if (!backLink.classList.contains("btn")) backLink.classList.add("btn");
+      backLink.setAttribute("data-back", "1");
+      if (!backLink.getAttribute("href")) {
+        backLink.href = "index.html#impressionen";
+      }
     }
+    actions.appendChild(backLink);
+    // Remove duplicates elsewhere
+    candidates.slice(1).forEach((el) => el.remove());
+    // -----------------------------------------------------------------
 
     if (descEl) descEl.textContent = "Bilder werden geladen …";
 
-    await detectProbeMode("assets/img/logo/logo.png");
+    // ---- Manifest with count/pattern to avoid probing ----
+    const manifestUrls = [
+      "assets/img/galeries/galleries.json",
+      "assets/img/galleries/galleries.json",
+    ];
+    const loadManifest = async () => {
+      for (const url of manifestUrls) {
+        try {
+          const res = await fetch(url, { cache: "no-store" });
+          if (!res.ok) continue;
+          return await res.json();
+        } catch {}
+      }
+      return null;
+    };
 
-    // Prefer a remembered root per gallery to avoid probing both
-    const rootKey = `gal:root:${g}:v1`;
-    let root = getCacheScalar(rootKey);
+    const parseManifest = (data) => {
+      if (!data) return [];
+      const arr = Array.isArray(data) ? data
+        : Array.isArray(data.galleries) ? data.galleries
+        : [];
+      return arr.map((x) => {
+        if (typeof x === "string") {
+          return { id: x, title: prettify(x) };
+        }
+        if (x && typeof x.id === "string") {
+          return {
+            id: x.id,
+            title: x.title || prettify(x.id),
+            count: Number.isFinite(x.count) ? x.count : null,
+            pattern: typeof x.pattern === "string" ? x.pattern : null,
+            start: Number.isFinite(x.start) ? x.start : 1,
+          };
+        }
+        return null;
+      }).filter(Boolean);
+    };
 
-    const roots = root
-      ? [root] // already known
-      : ["assets/img/galeries", "assets/img/galleries"];
+    const manif = parseManifest(await loadManifest());
+    const cfg = manif.find((r) => r.id === g) || {};
+
+    // Build URLs with zero/one probe depending on manifest info
+    const roots = ["assets/img/galeries", "assets/img/galleries"];
+    let baseRoot = roots[0];
+    for (const r of roots) { baseRoot = r; break; } // quick pick; failover later
+    const base = `${baseRoot}/${encodeURIComponent(g)}/`;
+
+    const LOCAL_DEFAULT_EXTS = ["webp", "jpg", "jpeg", "png"];
+    const LOCAL_DEFAULT_PATS = [
+      (i, ext) => `impression-${i}.${ext}`,
+      (i, ext) => `img-${i}.${ext}`,
+      (i, ext) => `photo-${i}.${ext}`,
+      (i, ext) => `${i}.${ext}`,
+    ];
+
+    async function probeExistsLocal(url) {
+      if (typeof probeExists === "function") return probeExists(url);
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(true);
+        img.onerror = () => resolve(false);
+        img.src = url;
+      });
+    }
+
+    async function sniffPatternAt(startIdx) {
+      for (const root of roots) {
+        const b = `${root}/${encodeURIComponent(g)}/`;
+        for (const ext of LOCAL_DEFAULT_EXTS) {
+          for (const pat of LOCAL_DEFAULT_PATS) {
+            const url = b + pat(startIdx, ext);
+            // eslint-disable-next-line no-await-in-loop
+            const ok = await probeExistsLocal(url);
+            if (ok) return { root, pat, ext };
+          }
+        }
+      }
+      return null;
+    }
 
     let files = [];
-    for (const r of roots) {
-      const base = `${r}/${encodeURIComponent(g)}/`;
-      // Try cached list first
-      const list = await discoverNumberedImages(base, {
-        maxIndex: 180,
-        sniffMaxIndex: 12,
-        stopAfterGap: 5,
-        cacheKey: `gal:list:${base}:v3`,
-      });
-      if (list.length) {
-        files = list;
-        // remember working root (for future loads)
-        if (!root) setCacheScalar(rootKey, r);
-        break;
+    if (Number.isFinite(cfg.count) && cfg.count > 0) {
+      const start = cfg.start || 1;
+
+      if (cfg.pattern && /\{\}/.test(cfg.pattern)) {
+        for (let i = 0; i < cfg.count; i++) {
+          files.push(base + cfg.pattern.replace("{}", String(start + i)));
+        }
+      } else {
+        // ONE sniff at "start", then build all
+        // eslint-disable-next-line no-await-in-loop
+        const hit = await sniffPatternAt(start);
+        if (hit) {
+          const realBase = `${hit.root}/${encodeURIComponent(g)}/`;
+          for (let i = 0; i < cfg.count; i++) {
+            files.push(realBase + hit.pat(start + i, hit.ext));
+          }
+        }
       }
-      // if we had a remembered root but found nothing (moved?), drop it
-      if (root && !list.length) setCacheScalar(rootKey, null, 1);
+    }
+
+    // Fallback: bounded discovery if no manifest info
+    if (!files.length) {
+      const exts = ["webp", "jpg", "jpeg", "png"];
+      const pats = [
+        (i, ext) => `img-${i}.${ext}`,
+        (i, ext) => `photo-${i}.${ext}`,
+        (i, ext) => `impression-${i}.${ext}`,
+        (i, ext) => `${i}.${ext}`,
+      ];
+      const MAX = 200;
+      const MISS_LIMIT = 30;
+
+      const tryRoot = async (root) => {
+        const b = `${root}/${encodeURIComponent(g)}/`;
+        const out = [];
+        let miss = 0, seenAny = false;
+        for (let i = 1; i <= MAX; i++) {
+          let url = null;
+          for (const ext of exts) {
+            for (const pat of pats) {
+              // eslint-disable-next-line no-await-in-loop
+              const ok = await probeExistsLocal(b + pat(i, ext));
+              if (ok) { url = b + pat(i, ext); break; }
+            }
+            if (url) break;
+          }
+          if (url) { out.push(url); seenAny = true; miss = 0; }
+          else { miss += 1; if (miss >= MISS_LIMIT && seenAny) break; }
+          if (out.length >= 120) break;
+        }
+        return out;
+      };
+
+      for (const r of roots) {
+        // eslint-disable-next-line no-await-in-loop
+        const arr = await tryRoot(r);
+        if (arr.length) { files = arr; break; }
+      }
     }
 
     if (!files.length) {
@@ -470,6 +636,7 @@
     }
 
     if (descEl) descEl.textContent = `${files.length} Bilder`;
+
     const frag = document.createDocumentFragment();
     for (const src of files) {
       const img = document.createElement("img");
