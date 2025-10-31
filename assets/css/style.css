@@ -389,29 +389,36 @@ footer {
 .impressions-banner {
   position: relative;
   width: 100%;
-  height: 200px;          /* keep banner height */
-  overflow-x: hidden;      /* 🚫 no horizontal overflow */
-  overflow-y: visible;     /* allow hover zoom to breathe vertically */
+  height: 200px;          /* fixed band height */
+  overflow: hidden;        /* 🚫 no scrollbars in either direction */
   border-top: none;
   border-bottom: none;
   background: var(--bg);
   margin: 8px 0;
+
+  /* hide scrollbars cross-browser (belt & suspenders) */
+  scrollbar-width: none;         /* Firefox */
+  -ms-overflow-style: none;      /* IE/Edge legacy */
 }
+.impressions-banner::-webkit-scrollbar { width:0; height:0; } /* WebKit */
 
 .impressions-track {
   display: flex;
+  align-items: center;           /* vertically center tiles without padding */
   width: max-content;
   animation: scrollImpressions 120s linear infinite;
-  padding: 10px 0;         /* vertical buffer for hover scale */
+  /* no vertical padding that could create extra height */
 }
 
+/* Pause when the user hovers the band (optional) */
 .impressions-track:hover {
-  animation-play-state: paused; /* optional: pause on hover */
+  animation-play-state: paused;
 }
 
+/* Tiles slightly smaller than band; hover scale stays < 200px */
 .impressions-banner img {
-  width: 184px;            /* slightly smaller than 200px */
-  height: 184px;
+  width: 188px;
+  height: 188px;                 /* 188 * 1.06 ≈ 199.3 < 200 */
   flex-shrink: 0;
   object-fit: cover;
   margin-right: 10px;
@@ -424,22 +431,20 @@ footer {
 }
 
 .impressions-banner img:hover {
-  transform: scale(1.08);
+  transform: scale(1.06);        /* stays inside 200px band → no vertical bar */
   filter: brightness(.98) saturate(118%);
 }
 
 @keyframes scrollImpressions {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); } /* track has duplicated set */
 }
 
-/* Mobile tightening: slightly smaller tiles = less chance of edge peeking */
+/* Mobile: optional tiny reduction to be extra safe */
 @media (max-width: 600px) {
-  .impressions-banner img {
-    width: 168px;
-    height: 168px;
-  }
+  .impressions-banner img { width: 184px; height: 184px; }
 }
+
 
 
 /* ================= Hero Social Links ================= */
