@@ -61,6 +61,14 @@ header {
   padding: 12px 0;
 }
 
+@media (max-width: 600px) {
+  header .links .btn {
+    height: 36px;
+    line-height: 36px;
+    padding: 0 12px;
+  }
+}
+
 .brand {
   display: inline-flex;
   align-items: center;
@@ -104,8 +112,8 @@ header {
 
 /* ================= Header Logo (leicht gezoomt) ================= */
 .brand-logo {
-  width: 72px;
-  height: 72px;
+  width: 100px;
+  height: 100px;
   display: block;
   border-radius: 6px;
   overflow: hidden;
@@ -125,6 +133,76 @@ header {
   font-weight: 600;
   letter-spacing: .5px;
 }
+
+/* ================= Header: Logo größer + Linie startet nach dem Logo ================= */
+/* Stellschrauben */
+:root {
+  --container-pad: 20px;   /* passt zu .container padding */
+  --logo-size: 84px;       /* Logo-Größe auf Desktop */
+  --logo-dip: 6px;         /* wie weit das Logo nach unten "überragt" */
+}
+
+header {
+  /* ggf. vorhandene untere Border ausblenden, wir zeichnen die Linie selbst */
+  border-bottom: none;
+}
+
+/* Die Nav bekommt eine eigene (weiche) Linie, die rechts vom Logo startet */
+.nav {
+  position: relative;
+  padding: 12px 0 18px; /* unten etwas Luft für den Logo-"Dip" */
+}
+
+/* Die horizontale Linie unter dem Header, beginnend NACH dem Logo */
+.nav::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--container-pad) + var(--logo-size) + 14px);
+  right: var(--container-pad);
+  bottom: 14px;
+  height: 1px;
+  background: var(--border);
+  opacity: 1;
+  pointer-events: none;
+}
+
+/* Logo größer + leicht in die Linie "hinein" */
+.brand-logo {
+  width: var(--logo-size);
+  height: var(--logo-size);
+  border-radius: 3px;
+  object-fit: cover;
+  object-position: center;
+  /* leichter permanenter Zoom + minimal nach unten versetzt */
+  transform: translateY(var(--logo-dip)) scale(1.15);
+  transition: transform 0.35s ease, opacity 0.3s ease;
+}
+
+.brand-logo:hover {
+  transform: translateY(var(--logo-dip)) scale(1.2);
+  opacity: 0.9;
+}
+
+/* ---------- Responsive Feintuning ---------- */
+@media (max-width: 900px) {
+  :root {
+    --logo-size: 64px;   /* etwas kleiner auf Tablet */
+    --logo-dip: 4px;
+  }
+  .nav { padding-bottom: 16px; }
+}
+
+@media (max-width: 600px) {
+  :root {
+    --logo-size: 56px;   /* Smartphone */
+    --logo-dip: 3px;
+  }
+  /* Linie darf am Handy etwas früher starten (mehr Platz) */
+  .nav::after {
+    left: calc(var(--container-pad) + var(--logo-size) + 10px);
+  }
+}
+
 
 /* ================= Hero ================= */
 .hero-wrap {

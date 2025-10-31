@@ -88,7 +88,7 @@
     const onScroll = () => {
       if (!ticking) {
         window.requestAnimationFrame(() => {
-          if (window.scrollY > 30) {
+          if (window.scrollY > 10) {
             header.classList.add("scrolled");
           } else {
             header.classList.remove("scrolled");
@@ -104,3 +104,6 @@
     onScroll();
   }
 })();
+
+
+
