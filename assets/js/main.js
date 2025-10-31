@@ -308,7 +308,9 @@
       for (const g of galleries) {
         const a = document.createElement("a");
         a.className = "btn";
-        a.href = `galerie.html?g=${encodeURIComponent(g.id)}`;
+        a.href = `galerie.html?g=${encodeURIComponent(g.id)}&t=${
+          encodeURIComponent(g.title)
+        }`;
         a.textContent = g.title;
         frag.appendChild(a);
       }
@@ -328,17 +330,45 @@
 
     const params = new URLSearchParams(location.search);
     const g = params.get("g");
+    const tParam = params.get("t"); // clean title passed from button
+
     if (!g) {
       titleEl.textContent = "Galerie";
-      descEl.textContent = "Keine Galerie gewählt.";
+      if (descEl) descEl.textContent = "Keine Galerie gewählt.";
       return;
     }
 
-    titleEl.textContent = `Galerie: ${g}`;
-    descEl.textContent = "Bilder werden geladen …";
+    // Fallback prettifier when no clean title is provided
+    const prettify = (s) =>
+      String(s || "")
+        .replace(/[-_]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .replace(/\b\w/g, (c) => c.toUpperCase());
 
-    // Discover images inside assets/img/galeries/<g>/
-    const base = `assets/img/galeries/${encodeURIComponent(g)}/`;
+    // Use clean title from ?t= if present, else prettify folder id
+    const finalTitle = tParam ? decodeURIComponent(tParam) : prettify(g);
+    titleEl.textContent = `Galerie: ${finalTitle}`;
+
+    // Ensure a "Zurück" button exists directly under the title
+    let actions = document.querySelector(".gallery-actions");
+    if (!actions) {
+      actions = document.createElement("div");
+      actions.className = "gallery-actions";
+      titleEl.insertAdjacentElement("afterend", actions);
+    }
+    if (!actions.querySelector("a[data-back]")) {
+      const backLink = document.createElement("a");
+      backLink.className = "btn";
+      backLink.href = "index.html#impressionen";
+      backLink.setAttribute("data-back", "1");
+      backLink.textContent = "Zurück";
+      actions.appendChild(backLink);
+    }
+
+    if (descEl) descEl.textContent = "Bilder werden geladen …";
+
+    // ---- Image discovery (supports both galeries/ and galleries/) ----
     const exts = ["webp", "jpg", "jpeg", "png"];
     const patterns = [
       (i, ext) => `img-${i}.${ext}`,
@@ -357,38 +387,56 @@
         img.src = src;
       });
 
-    const discoverOne = async (i) => {
-      for (const ext of exts) {
-        for (const pat of patterns) {
-          // eslint-disable-next-line no-await-in-loop
-          const ok = await probe(base + pat(i, ext));
-          if (ok) return ok;
+    const discoverFromBase = async (base) => {
+      const discoverOne = async (i) => {
+        for (const ext of exts) {
+          for (const pat of patterns) {
+            // eslint-disable-next-line no-await-in-loop
+            const ok = await probe(base + pat(i, ext));
+            if (ok) return ok;
+          }
         }
+        return null;
+      };
+
+      const tasks = [];
+      for (let i = 1; i <= MAX; i++) tasks.push(discoverOne(i));
+      const chunks = [];
+      for (let i = 0; i < tasks.length; i += CONCURRENCY) {
+        chunks.push(tasks.slice(i, i + CONCURRENCY));
       }
-      return null;
+
+      const foundLocal = [];
+      for (const chunk of chunks) {
+        // eslint-disable-next-line no-await-in-loop
+        const res = await Promise.all(chunk);
+        for (const s of res) if (s) foundLocal.push(s);
+        if (foundLocal.length >= 120) break; // enough images
+      }
+      return foundLocal;
     };
 
-    const tasks = [];
-    for (let i = 1; i <= MAX; i++) tasks.push(discoverOne(i));
-    const chunks = [];
-    for (let i = 0; i < tasks.length; i += CONCURRENCY) {
-      chunks.push(tasks.slice(i, i + CONCURRENCY));
-    }
+    const baseCandidates = [
+      `assets/img/galeries/${encodeURIComponent(g)}/`,
+      `assets/img/galleries/${encodeURIComponent(g)}/`,
+    ];
 
-    const found = [];
-    for (const chunk of chunks) {
+    let found = [];
+    for (const base of baseCandidates) {
       // eslint-disable-next-line no-await-in-loop
-      const res = await Promise.all(chunk);
-      for (const s of res) if (s) found.push(s);
-      if (found.length >= 120) break; // enough images
+      const arr = await discoverFromBase(base);
+      if (arr.length) {
+        found = arr;
+        break;
+      }
     }
 
     if (!found.length) {
-      descEl.textContent = "Keine Bilder gefunden.";
+      if (descEl) descEl.textContent = "Keine Bilder gefunden.";
       return;
     }
 
-    descEl.textContent = `${found.length} Bilder`;
+    if (descEl) descEl.textContent = `${found.length} Bilder`;
     const frag = document.createDocumentFragment();
     for (const src of found) {
       const img = document.createElement("img");
