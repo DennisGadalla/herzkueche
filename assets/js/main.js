@@ -202,42 +202,4 @@
     w.document.write(html);
     w.document.close();
   }
-
-  /* ===============================================================
-     5) Header visibility: show 0–300 px, hide >= 300 px
-     =============================================================== */
-  (() => {
-    const header = document.querySelector("header");
-    if (!header) return;
-
-    const NAV_HIDE_AFTER_PX = 300;
-    let raf = 0;
-    let hidden = null;
-
-    const update = () => {
-      raf = 0;
-      const y =
-        window.scrollY ||
-        document.documentElement.scrollTop ||
-        document.body.scrollTop ||
-        0;
-
-      // Inclusive threshold so it hides *at* 300 px
-      const shouldHide = y >= NAV_HIDE_AFTER_PX;
-      if (hidden !== shouldHide) {
-        header.classList.toggle("nav-hidden", shouldHide);
-        hidden = shouldHide;
-      }
-    };
-
-    const onScroll = () => {
-      if (raf) return;
-      raf = requestAnimationFrame(update);
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll, { passive: true });
-    document.addEventListener("DOMContentLoaded", update);
-    update();
-  })();
 })();
