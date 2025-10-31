@@ -506,7 +506,7 @@ footer {
   padding: 36px 0 56px;
 }
 .legal-wrap p {
-  margin: 0 0 14px;
+  margin: 10 0 14px;
   color: var(--muted);
 }
 .legal-address {
