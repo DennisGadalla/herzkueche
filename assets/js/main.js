@@ -1,61 +1,106 @@
-// ================= Reveal cards =================
-const io = new IntersectionObserver((entries) => {
-  for (const e of entries)
-    if (e.isIntersecting) {
-      e.target.classList.add("reveal");
-      io.unobserve(e.target);
-    }
-}, { threshold: 0.12 });
-document.querySelectorAll(".card").forEach((el) => io.observe(el));
+(() => {
+  "use strict";
 
-// ================= Auto year =================
-document.getElementById("year").textContent =
-  new Date().getFullYear().toString();
+  /* =============== Reveal cards =============== */
+  const revealObserver = new IntersectionObserver(
+    (entries, obs) => {
+      for (const e of entries) {
+        if (e.isIntersecting) {
+          e.target.classList.add("reveal");
+          obs.unobserve(e.target);
+        }
+      }
+    },
+    { threshold: 0.12 }
+  );
 
-// ================= Scrolling Impressions Banner =================
-document.addEventListener("DOMContentLoaded", () => {
-  const track = document.getElementById("impressions-track");
-  if (!track) return;
+  document
+    .querySelectorAll(".card")
+    .forEach((el) => revealObserver.observe(el));
 
-  const base = "assets/img/impressions/";
-  const maxImages = 100;
-  const extensions = ["jpg", "jpeg", "png", "webp"];
-
-  const loadPromises = [];
-  for (let i = 1; i <= maxImages; i++) {
-    for (const ext of extensions) {
-      const img = new Image();
-      const src = `${base}impression-${i}.${ext}`;
-      img.src = src;
-      const promise = new Promise((resolve) => {
-        img.onload = () => resolve(src);
-        img.onerror = () => resolve(null);
-      });
-      loadPromises.push(promise);
-    }
+  /* =============== Auto year =============== */
+  const yearEl = document.getElementById("year");
+  if (yearEl) {
+    yearEl.textContent = String(new Date().getFullYear());
   }
 
-  Promise.all(loadPromises).then((results) => {
-    const valid = [...new Set(results.filter((r) => r !== null))];
-    if (!valid.length) return;
+  /* =============== Scrolling Impressions Banner =============== */
+  document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+      const track = document.getElementById("impressions-track");
+      if (!track) return;
 
-    const allImages = [...valid, ...valid]; // Duplicate for seamless scroll
-    allImages.forEach((src) => {
-      const img = document.createElement("img");
-      img.src = src;
-      track.appendChild(img);
-    });
+      const base = "assets/img/impressions/";
+      const maxImages = 100;
+      const extensions = ["jpg", "jpeg", "png", "webp"];
 
-  });
-});
+      const loadImage = (src) =>
+        new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => resolve(src);
+          img.onerror = () => resolve(null);
+          img.src = src;
+        });
 
-// ================= Header Scroll Effect =================
-document.addEventListener("scroll", () => {
+      // Try extensions sequentially for each index to avoid 3x redundant failed requests
+      const loadFirstExisting = async (i) => {
+        for (const ext of extensions) {
+          const src = `${base}impression-${i}.${ext}`;
+          // eslint-disable-next-line no-await-in-loop
+          const ok = await loadImage(src);
+          if (ok) return ok;
+        }
+        return null;
+      };
+
+      (async () => {
+        const tasks = [];
+        for (let i = 1; i <= maxImages; i++) {
+          tasks.push(loadFirstExisting(i));
+        }
+
+        const results = await Promise.all(tasks);
+        const valid = results.filter(Boolean);
+        if (!valid.length) return;
+
+        // Duplicate list for seamless loop
+        const allImages = valid.concat(valid);
+
+        // Fill the track
+        const frag = document.createDocumentFragment();
+        for (const src of allImages) {
+          const img = document.createElement("img");
+          img.src = src;
+          frag.appendChild(img);
+        }
+        track.appendChild(frag);
+      })();
+    },
+    { passive: true }
+  );
+
+  /* =============== Header Scroll Effect =============== */
   const header = document.querySelector("header");
-  if (window.scrollY > 30) {
-    header.classList.add("scrolled");
-  } else {
-    header.classList.remove("scrolled");
-  }
-});
+  if (header) {
+    let ticking = false;
 
+    const onScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          if (window.scrollY > 30) {
+            header.classList.add("scrolled");
+          } else {
+            header.classList.remove("scrolled");
+          }
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    document.addEventListener("scroll", onScroll, { passive: true });
+    // Run once on load (e.g., if page opens scrolled)
+    onScroll();
+  }
+})();

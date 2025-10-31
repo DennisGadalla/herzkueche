@@ -7,96 +7,121 @@
   <meta name="description"
         content="Sabine Gadalla – bekannt aus The Taste, Kursleiterin & Privatköchin aus Recklinghausen. Herzhafte Küche mit mediterranen & orientalischen Aromen.">
 
+  <!-- Favicon -->
   <link rel="icon" href="assets/img/logo.svg" type="image/svg+xml" />
+
+  <!-- Styles -->
+  <link rel="preload" href="assets/css/style.css" as="style" />
   <link rel="stylesheet" href="assets/css/style.css" />
+
+  <!-- Prevent automatic phone/email styling on iOS -->
+  <meta name="format-detection" content="telephone=no, email=no" />
 </head>
 
 <body>
-<!-- ================= Header ================= -->
-<header>
-  <div class="container">
-    <nav class="nav" aria-label="Hauptnavigation">
-      <a class="brand" href="#top" aria-label="Start">
-        <img src="assets/img/logo/logo.png"
-             alt="Sabines Herzküche Logo"
-             class="brand-logo">
-      </a>
+  <!-- ================= Header ================= -->
+  <header>
+    <div class="container">
+      <nav class="nav" aria-label="Hauptnavigation">
+        <a class="brand" href="#top" aria-label="Start">
+          <img
+            src="assets/img/logo/logo.png"
+            alt="Sabines Herzküche Logo"
+            class="brand-logo"
+            width="58"
+            height="58"
+            decoding="async"
+          />
+        </a>
 
-      <div class="links">
-        <a href="#kontakt" class="btn">Kontakt</a>
-      </div>
-    </nav>
-  </div>
-</header>
-
-
-
-<!-- ================= Hero ================= -->
-<div class="hero-wrap" id="top">
-  <div class="container">
-    <section class="hero">
-      <!-- Linke Seite: Text -->
-      <div class="hero-content">
-        <span class="tag">Lecker. Echt. Genussvoll.</span>
-        <h1>Sabine Gadalla</h1>
-        <h2>Kochen mit Herz und Charakter</h2>
-        <p>
-          Zweifache Teilnehmerin bei <strong>„The Taste“</strong>
-          (Team Kumptner und Team Raue), Kursleiterin &
-          Privatköchin aus <strong>Recklinghausen</strong>.
-          Meine Küche verbindet mediterrane & orientalische
-          Aromen mit bodenständigen Klassikern – immer
-          alltagstauglich, lecker und mit Herz.
-        </p>
-
-        <!-- Social Links -->
-        <div class="hero-social">
-          <a href="https://www.instagram.com/sabinethetasteallstars/"
-             target="_blank" rel="noopener" class="insta-link">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
-                 width="20" height="20" fill="currentColor">
-              <path d="M7 2C4.2 2 2 4.2 2 7v10c0 2.8 2.2 5 5 5h10c2.8 0 5-2.2 5-5V7c0-2.8-2.2-5-5-5H7zm10 2a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h10zM12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm4.5-2a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/>
-            </svg>
-            Folge mir auf Instagram
-          </a>
-
-          <a href="https://www.youtube.com/@sabinegadalla9102"
-             target="_blank" rel="noopener" class="yt-link">
-            <svg xmlns="http://www.w3.org/2000/svg"
-                 viewBox="0 0 24 24" width="20" height="20"
-                 fill="currentColor">
-              <path d="M10 15l5.19-3L10 9v6zm12-6.5s0-3.5-3.5-3.5H5.5S2 5 2 8.5v7s0 3.5 3.5 3.5h13s3.5 0 3.5-3.5v-7z"/>
-            </svg>
-            Mein YouTube-Kanal
-          </a>
+        <div class="links">
+          <a href="#kontakt" class="btn">Kontakt</a>
         </div>
-      </div>
+      </nav>
+    </div>
+  </header>
 
-      <!-- Rechte Seite: Bild -->
-      <div class="hero-image">
-        <img src="assets/img/person/sabine-1.jpg"
-             alt="Sabine Gadalla"
-             class="hero-portrait"
-             loading="lazy">
-      </div>
-    </section>
+  <!-- ================= Hero ================= -->
+  <div class="hero-wrap" id="top">
+    <div class="container">
+      <section class="hero" aria-labelledby="hero-title">
+        <!-- Linke Seite: Text -->
+        <div class="hero-content">
+          <span class="tag">Lecker. Echt. Genussvoll.</span>
+          <h1 id="hero-title">Sabine Gadalla</h1>
+          <h2>Kochen mit Herz und Charakter</h2>
+          <p>
+            Zweifache Teilnehmerin bei <strong>„The Taste“</strong>
+            (Team Kumptner und Team Raue), Kursleiterin &
+            Privatköchin aus <strong>Recklinghausen</strong>.
+            Meine Küche verbindet mediterrane & orientalische
+            Aromen mit bodenständigen Klassikern – immer
+            alltagstauglich, lecker und mit Herz.
+          </p>
+
+          <!-- Social Links -->
+          <div class="hero-social">
+            <a
+              href="https://www.instagram.com/sabinethetasteallstars/"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="insta-link"
+              aria-label="Instagram: sabinethetasteallstars"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg"
+                   viewBox="0 0 24 24" width="20" height="20"
+                   fill="currentColor" aria-hidden="true" focusable="false">
+                <path d="M7 2C4.2 2 2 4.2 2 7v10c0 2.8 2.2 5 5 5h10c2.8 0 5-2.2 5-5V7c0-2.8-2.2-5-5-5H7zm10 2a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h10zM12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm4.5-2a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/>
+              </svg>
+              Folge mir auf Instagram
+            </a>
+
+            <a
+              href="https://www.youtube.com/@sabinegadalla9102"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="yt-link"
+              aria-label="YouTube: sabinegadalla9102"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg"
+                   viewBox="0 0 24 24" width="20" height="20"
+                   fill="currentColor" aria-hidden="true" focusable="false">
+                <path d="M10 15l5.19-3L10 9v6zm12-6.5s0-3.5-3.5-3.5H5.5S2 5 2 8.5v7s0 3.5 3.5 3.5h13s3.5 0 3.5-3.5v-7z"/>
+              </svg>
+              Mein YouTube-Kanal
+            </a>
+          </div>
+        </div>
+
+        <!-- Rechte Seite: Bild -->
+        <div class="hero-image">
+          <img
+            src="assets/img/person/sabine-1.jpg"
+            alt="Sabine Gadalla"
+            class="hero-portrait"
+            loading="lazy"
+            decoding="async"
+            fetchpriority="high"
+            width="360"
+            height="360"
+          />
+        </div>
+      </section>
+    </div>
   </div>
-</div>
-
 
   <!-- ================= Image Banner ================= -->
-  <div class="impressions-banner">
+  <div class="impressions-banner" aria-label="Bildeindrücke">
     <div class="impressions-track" id="impressions-track"></div>
   </div>
 
-
   <!-- ================= Main Sections ================= -->
-  <main>
-    <section id="about">
+  <main id="main">
+    <section id="about" aria-labelledby="about-title">
       <div class="container">
         <div class="card">
           <span class="tag">Über mich</span>
-          <h2>Herzköchin aus Leidenschaft</h2>
+          <h2 id="about-title">Herzköchin aus Leidenschaft</h2>
           <p>
             Sabine kocht, seit sie denken kann – und seit ihre Zwillinge
             auf der Welt sind, praktisch täglich. Ihre Freude am
@@ -107,11 +132,11 @@
       </div>
     </section>
 
-    <section id="angebot">
+    <section id="angebot" aria-labelledby="angebot-title">
       <div class="container">
         <div class="card">
           <span class="tag">Angebot</span>
-          <h2>Kurse & Private Dining</h2>
+          <h2 id="angebot-title">Kurse & Private Dining</h2>
           <p>
             Individuelle Kochkurse, Private Dining & Events in Recklinghausen und Umgebung.
           </p>
@@ -119,31 +144,69 @@
       </div>
     </section>
 
-    <section id="kontakt">
+    <section id="kontakt" aria-labelledby="kontakt-title">
       <div class="container">
         <div class="card">
           <span class="tag">Kontakt</span>
-          <h2>Lust auf Genuss?</h2>
-          <form action="https://api.web3forms.com/submit"
-                method="POST" class="contact-form">
-            <input type="hidden" name="access_key"
-                   value="37169505-4753-411a-94c0-aed80672ed6c">
-            <label>Dein Name<input type="text" name="name" required></label>
-            <label>E-Mail<input type="email" name="email" required></label>
-            <label>Nachricht<textarea name="message" required></textarea></label>
-            <button class="btn primary" type="submit">Nachricht senden</button>
+          <h2 id="kontakt-title">Lust auf Genuss?</h2>
+          <form
+            action="https://api.web3forms.com/submit"
+            method="POST"
+            class="contact-form"
+          >
+            <input
+              type="hidden"
+              name="access_key"
+              value="37169505-4753-411a-94c0-aed80672ed6c"
+            />
+
+            <label for="name">Dein Name
+              <input
+                id="name"
+                type="text"
+                name="name"
+                required
+                autocomplete="name"
+              />
+            </label>
+
+            <label for="email">E-Mail
+              <input
+                id="email"
+                type="email"
+                name="email"
+                required
+                autocomplete="email"
+                inputmode="email"
+              />
+            </label>
+
+            <label for="message">Nachricht
+              <textarea
+                id="message"
+                name="message"
+                required
+                rows="5"
+              ></textarea>
+            </label>
+
+            <button class="btn primary" type="submit">
+              Nachricht senden
+            </button>
           </form>
         </div>
       </div>
     </section>
   </main>
 
+  <!-- ================= Footer ================= -->
   <footer>
     <div class="container">
       <span id="year"></span> © Sabine Gadalla — Sabines Herzküche
     </div>
   </footer>
 
+  <!-- Scripts -->
   <script src="assets/js/main.js" defer></script>
 </body>
 </html>
