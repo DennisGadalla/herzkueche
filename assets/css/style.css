@@ -363,6 +363,23 @@ footer {
   text-align: center;
 }
 
+/* Footer link styling */
+.footer-link {
+  color: var(--muted);
+  text-decoration: none;
+  margin-left: 6px;
+  border-bottom: 1px dashed transparent;
+  transition: color .2s ease, border-color .2s ease;
+}
+.footer-link:hover,
+.footer-link:focus {
+  color: var(--text);
+  border-bottom-color: currentColor;
+  outline: none;
+}
+
+
+
 /* ================= Contact Form ================= */
 .contact-form input,
 .contact-form textarea {
