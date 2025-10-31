@@ -130,18 +130,18 @@
     document.documentElement.style.overflow = previousOverflow || "";
   }
 
-  /* ================= Fast impressions banner ================= */
+  /* ===============================================================
+     4) Impressions banner: low-request discovery + caching
+     =============================================================== */
   document.addEventListener("DOMContentLoaded", () => {
     const track = $("#impressions-track");
     const banner = track?.parentElement;
     if (!track || !banner) return;
 
-    const MAX_VISIBLE = 24;
-    const MAX_DISCOVER = 60;
-    const CONCURRENCY = 6;
-    const EAGER_COUNT = 4;
-    const IMG_W = 188;
-    const IMG_H = 188;
+    const MAX_VISIBLE = 24;   // how many to show
+    const MAX_INDEX = 80;     // highest number to try
+    const MISS_LIMIT = 20;    // stop after N consecutive misses
+    const IMG_W = 188, IMG_H = 188;
 
     const base = "assets/img/impressions/";
     const exts = ["webp", "jpg", "jpeg", "png"];
@@ -152,98 +152,87 @@
       (i, ext) => `${i}.${ext}`,
     ];
 
-    const probe = (src) =>
-      new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => resolve(src);
-        img.onerror = () => resolve(null);
-        img.src = src;
-      });
+    const ssKey = "impr-srcs:v1"; // bump v# if you change logic
 
-    const findExisting = async (i) => {
-      for (const ext of exts) {
-        for (const pat of patterns) {
-          // eslint-disable-next-line no-await-in-loop
-          const ok = await probe(base + pat(i, ext));
-          if (ok) return ok;
+    const headExists = async (url) => {
+      try {
+        const res = await fetch(url, { method: "HEAD", cache: "no-store" });
+        return res.ok;
+      } catch {
+        return false;
+      }
+    };
+
+    const discoverSequential = async () => {
+      // if developer prefilled <img> in markup, use those (0 extra requests)
+      let preset = Array.from(track.querySelectorAll("img"))
+        .map((el) => el.getAttribute("src"))
+        .filter(Boolean);
+      if (preset.length) return Array.from(new Set(preset)).slice(0, MAX_VISIBLE);
+
+      // sessionStorage cache
+      try {
+        const cached = JSON.parse(sessionStorage.getItem(ssKey) || "null");
+        if (Array.isArray(cached) && cached.length) return cached;
+      } catch {}
+
+      const found = [];
+      let miss = 0;
+      for (let i = 1; i <= MAX_INDEX; i++) {
+        let hitUrl = null;
+        for (const ext of exts) {
+          for (const pat of patterns) {
+            const url = base + pat(i, ext);
+            // eslint-disable-next-line no-await-in-loop
+            const ok = await headExists(url);
+            if (ok) { hitUrl = url; break; }
+          }
+          if (hitUrl) break;
+        }
+        if (hitUrl) {
+          found.push(hitUrl);
+          miss = 0;
+          if (found.length >= MAX_VISIBLE) break;
+        } else {
+          miss += 1;
+          if (miss >= MISS_LIMIT && found.length) break;
         }
       }
-      return null;
+
+      try { sessionStorage.setItem(ssKey, JSON.stringify(found)); } catch {}
+      return found;
     };
 
     const build = async () => {
       obs && obs.disconnect();
 
-      let sources = Array.from(track.querySelectorAll("img"))
-        .map((el) => el.getAttribute("src"))
-        .filter(Boolean);
-
-      if (!sources.length) {
-        const tasks = [];
-        const limit = Math.max(MAX_VISIBLE, Math.min(MAX_DISCOVER, 120));
-        for (let i = 1; i <= limit; i++) tasks.push(findExisting(i));
-        const results = await Promise.all(tasks);
-        sources = results.filter(Boolean);
-      }
+      const sources = await discoverSequential();
       if (!sources.length) return;
 
-      const unique = Array.from(new Set(sources));
-      const subset = unique.slice(0, MAX_VISIBLE);
-
+      // Build track (one set + duplicate for loop)
       track.innerHTML = "";
+      const addSet = (srcs) => {
+        const frag = document.createDocumentFragment();
+        for (const src of srcs) {
+          const img = document.createElement("img");
+          img.src = src;
+          img.decoding = "async";
+          img.loading = "lazy";
+          img.width = IMG_W;
+          img.height = IMG_H;
+          frag.appendChild(img);
+        }
+        track.appendChild(frag);
+      };
+      addSet(sources);
+      addSet(sources);
 
-      const loadQueue = (srcs, onReady) =>
-        new Promise((resolve) => {
-          let idx = 0;
-          let inFlight = 0;
-
-          const pump = () => {
-            while (inFlight < CONCURRENCY && idx < srcs.length) {
-              const src = srcs[idx++];
-              inFlight += 1;
-
-              const img = new Image();
-              img.decoding = "async";
-              img.loading = idx <= EAGER_COUNT ? "eager" : "lazy";
-              try { img.fetchPriority = idx <= EAGER_COUNT ? "high" : "auto"; }
-              catch (_) {}
-              img.width = IMG_W; img.height = IMG_H;
-
-              img.onload = () => {
-                onReady(img);
-                inFlight -= 1;
-                if (idx >= srcs.length && inFlight === 0) resolve();
-                else pump();
-              };
-              img.onerror = () => {
-                inFlight -= 1;
-                if (idx >= srcs.length && inFlight === 0) resolve();
-                else pump();
-              };
-              img.src = src;
-            }
-          };
-          pump();
-        });
-
-      const firstSet = [];
-      await loadQueue(subset, (img) => {
-        const el = document.createElement("img");
-        el.src = img.src; el.decoding = img.decoding; el.loading = img.loading;
-        el.width = IMG_W; el.height = IMG_H;
-        track.appendChild(el);
-        firstSet.push(el);
-      });
-
-      const secondSetFrag = document.createDocumentFragment();
-      for (const el of firstSet) secondSetFrag.appendChild(el.cloneNode(true));
-      track.appendChild(secondSetFrag);
-
+      // Tune animation speed by real width
       requestAnimationFrame(() => {
-        const halfWidth = track.scrollWidth / 2;
-        if (halfWidth > 0) {
+        const half = track.scrollWidth / 2;
+        if (half > 0) {
           const pxPerSec = 90;
-          const secs = Math.max(40, Math.round(halfWidth / pxPerSec));
+          const secs = Math.max(40, Math.round(half / pxPerSec));
           track.style.animationDuration = `${secs}s`;
         }
       });
@@ -252,12 +241,13 @@
         "click",
         (e) => {
           const img = e.target.closest("img");
-          if (!img) return; openLightbox(img);
+          if (img) openLightbox(img);
         },
         { passive: true }
       );
     };
 
+    // Lazy build when banner near viewport
     let obs;
     const startWhenNear = () => {
       obs = new IntersectionObserver(
@@ -272,9 +262,8 @@
     };
 
     const rect = banner.getBoundingClientRect();
-    const alreadyVisible =
-      rect.top < window.innerHeight + 600 && rect.bottom > -600;
-    if (alreadyVisible) build(); else startWhenNear();
+    const visible = rect.top < innerHeight + 600 && rect.bottom > -600;
+    if (visible) build(); else startWhenNear();
   });
 
   /* ================= Impressionen card (index.html) ================= */
@@ -322,6 +311,7 @@
   });
 
   /* ================= Galerie page loader (galerie.html) ============== */
+  /* ================= Galerie page loader (galerie.html) ============== */
   document.addEventListener("DOMContentLoaded", async () => {
     const grid = $("#galerie-grid");
     const titleEl = $("#galerie-title");
@@ -330,7 +320,7 @@
 
     const params = new URLSearchParams(location.search);
     const g = params.get("g");
-    const tParam = params.get("t"); // clean title passed from button
+    const tParam = params.get("t");
 
     if (!g) {
       titleEl.textContent = "Galerie";
@@ -338,7 +328,6 @@
       return;
     }
 
-    // Fallback prettifier when no clean title is provided
     const prettify = (s) =>
       String(s || "")
         .replace(/[-_]+/g, " ")
@@ -346,11 +335,10 @@
         .trim()
         .replace(/\b\w/g, (c) => c.toUpperCase());
 
-    // Use clean title from ?t= if present, else prettify folder id
     const finalTitle = tParam ? decodeURIComponent(tParam) : prettify(g);
     titleEl.textContent = `Galerie: ${finalTitle}`;
 
-    // Ensure a "Zurück" button exists directly under the title
+    // "Zurück" button (styled like other .btn)
     let actions = document.querySelector(".gallery-actions");
     if (!actions) {
       actions = document.createElement("div");
@@ -368,7 +356,7 @@
 
     if (descEl) descEl.textContent = "Bilder werden geladen …";
 
-    // ---- Image discovery (supports both galeries/ and galleries/) ----
+    // ---- Low-request discovery with HEAD + caching & early stop ----
     const exts = ["webp", "jpg", "jpeg", "png"];
     const patterns = [
       (i, ext) => `img-${i}.${ext}`,
@@ -376,69 +364,83 @@
       (i, ext) => `impression-${i}.${ext}`,
       (i, ext) => `${i}.${ext}`,
     ];
-    const MAX = 200;
-    const CONCURRENCY = 8;
+    const MAX_INDEX = 300;   // upper bound to try
+    const MISS_LIMIT = 30;   // stop after N consecutive misses
+    const perPageKey = (root) => `gal:${root}:${g}:v1`;
 
-    const probe = (src) =>
-      new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => resolve(src);
-        img.onerror = () => resolve(null);
-        img.src = src;
-      });
-
-    const discoverFromBase = async (base) => {
-      const discoverOne = async (i) => {
-        for (const ext of exts) {
-          for (const pat of patterns) {
-            // eslint-disable-next-line no-await-in-loop
-            const ok = await probe(base + pat(i, ext));
-            if (ok) return ok;
-          }
-        }
-        return null;
-      };
-
-      const tasks = [];
-      for (let i = 1; i <= MAX; i++) tasks.push(discoverOne(i));
-      const chunks = [];
-      for (let i = 0; i < tasks.length; i += CONCURRENCY) {
-        chunks.push(tasks.slice(i, i + CONCURRENCY));
+    const headExists = async (url) => {
+      try {
+        const res = await fetch(url, { method: "HEAD", cache: "no-store" });
+        return res.ok;
+      } catch {
+        return false;
       }
-
-      const foundLocal = [];
-      for (const chunk of chunks) {
-        // eslint-disable-next-line no-await-in-loop
-        const res = await Promise.all(chunk);
-        for (const s of res) if (s) foundLocal.push(s);
-        if (foundLocal.length >= 120) break; // enough images
-      }
-      return foundLocal;
     };
 
-    const baseCandidates = [
-      `assets/img/galeries/${encodeURIComponent(g)}/`,
-      `assets/img/galleries/${encodeURIComponent(g)}/`,
+    const discoverFromRoot = async (root) => {
+      // session cache per root (galeries/ or galleries/)
+      try {
+        const cached = JSON.parse(sessionStorage.getItem(perPageKey(root)) || "null");
+        if (Array.isArray(cached) && cached.length) return cached;
+      } catch {}
+
+      const base = `${root}/${encodeURIComponent(g)}/`;
+      const found = [];
+      let miss = 0;
+      let seenAny = false;
+
+      for (let i = 1; i <= MAX_INDEX; i++) {
+        let urlHit = null;
+        for (const ext of exts) {
+          for (const pat of patterns) {
+            const url = base + pat(i, ext);
+            // eslint-disable-next-line no-await-in-loop
+            const ok = await headExists(url);
+            if (ok) { urlHit = url; break; }
+          }
+          if (urlHit) break;
+        }
+        if (urlHit) {
+          seenAny = true;
+          found.push(urlHit);
+          miss = 0;
+          // allow large galleries; remove this cap if you like
+          if (found.length >= 120) break;
+        } else {
+          miss += 1;
+          if (miss >= MISS_LIMIT && seenAny) break;
+        }
+      }
+
+      try {
+        sessionStorage.setItem(perPageKey(root), JSON.stringify(found));
+      } catch {}
+
+      return found;
+    };
+
+    // Try both spellings; first with your current one
+    const roots = [
+      "assets/img/galeries",
+      "assets/img/galleries",
     ];
 
-    let found = [];
-    for (const base of baseCandidates) {
+    let files = [];
+    for (const r of roots) {
       // eslint-disable-next-line no-await-in-loop
-      const arr = await discoverFromBase(base);
-      if (arr.length) {
-        found = arr;
-        break;
-      }
+      const arr = await discoverFromRoot(r);
+      if (arr.length) { files = arr; break; }
     }
 
-    if (!found.length) {
+    if (!files.length) {
       if (descEl) descEl.textContent = "Keine Bilder gefunden.";
       return;
     }
 
-    if (descEl) descEl.textContent = `${found.length} Bilder`;
+    if (descEl) descEl.textContent = `${files.length} Bilder`;
+
     const frag = document.createDocumentFragment();
-    for (const src of found) {
+    for (const src of files) {
       const img = document.createElement("img");
       img.src = src;
       img.decoding = "async";
