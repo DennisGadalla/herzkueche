@@ -387,79 +387,37 @@ footer {
 .impressions-banner {
   position: relative;
   width: 100%;
-  height: 200px;                  /* square height = image size */
-  overflow-x: auto;               /* allow drag/scroll */
-  overflow-y: hidden;
+  height: 200px; /* square height = image size */
+  overflow: hidden;
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   background: var(--bg);
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;          /* Firefox hide bar */
-  cursor: grab;
 }
-.impressions-banner::-webkit-scrollbar { display: none; } /* WebKit hide */
-
-.impressions-banner.dragging { cursor: grabbing; }
 
 .impressions-track {
   display: flex;
   width: max-content;
-  /* no CSS animation anymore – JS does the endless scroll */
+  /* slower scroll: 60s → 120s (double duration = half speed) */
+  animation: scrollImpressions 120s linear infinite;
 }
 
 .impressions-banner img {
-  width: 200px;
+  width: 200px;  /* fixed width = height for perfect square */
   height: 200px;
   flex-shrink: 0;
-  object-fit: cover;
-  margin-right: 10px;
+  object-fit: cover; /* crop + zoom to fill square */
+  margin-right: 10px; /* gap between squares */
   border-radius: 8px;
-  filter: brightness(0.9) saturate(115%);
-  transition: transform 0.2s ease;
-  user-select: none;
-  pointer-events: auto;
-  cursor: zoom-in;
+  filter: brightness(.9) saturate(115%);
+  transition: transform .4s ease;
 }
 
-.impressions-banner img:active { transform: scale(0.98); }
+.impressions-banner img:hover { transform: scale(1.05); }
 
-
-/* ================= Lightbox ================= */
-.lightbox {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.75);
-  display: none;                  /* hidden by default */
-  align-items: center;
-  justify-content: center;
-  z-index: 999;
-  padding: 24px;
+@keyframes scrollImpressions {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
-
-.lightbox.open { display: flex; }
-
-.lightbox img {
-  max-width: min(96vw, 1200px);
-  max-height: 90vh;
-  border-radius: 12px;
-  box-shadow: 0 20px 60px rgba(0,0,0,.5);
-}
-
-.lightbox-close {
-  position: absolute;
-  top: 14px;
-  right: 16px;
-  font-size: 28px;
-  line-height: 1;
-  color: #fff;
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  padding: 6px 10px;
-  border-radius: 8px;
-}
-.lightbox-close:hover { background: rgba(255,255,255,.12); }
-
 
 /* ================= Hero Social Links ================= */
 .hero-social {
