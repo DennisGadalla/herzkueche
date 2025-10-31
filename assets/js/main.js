@@ -102,10 +102,8 @@
 
   /* =============== Self-closing popup tab for images (Zurück + click-to-close) =============== */
   function openImagePopupTab(src) {
-    // Try to open a blank tab we fully control
     const w = window.open("", "_blank");
     if (!w) {
-      // Fallback if popup blocked: normal new-tab open
       const a = document.createElement("a");
       a.href = src;
       a.target = "_blank";
@@ -116,7 +114,6 @@
       return;
     }
 
-    // Minimal themed viewer that closes on click/Escape or "Zurück"
     const html = `<!doctype html>
 <html lang="de">
 <head>
@@ -124,10 +121,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Bild</title>
   <style>
-    :root{
-      --bg:#121015; --text:#f4efe9; --muted:#c6bfb6;
-      --accent:#ff7043; --border:#2e2730;
-    }
+    :root{ --bg:#121015; --text:#f4efe9; --muted:#c6bfb6; --accent:#ff7043; --border:#2e2730; }
     @media (prefers-color-scheme: light){
       :root{ --bg:#ffffff; --text:#211b17; --muted:#6b5c55; --accent:#f16832; }
     }
@@ -144,14 +138,30 @@
       box-shadow:0 20px 60px rgba(0,0,0,.5);
       cursor:zoom-out; user-select:none;
     }
-    .back{
-      position:fixed; top:12px; right:12px;
-      padding:8px 12px; border-radius:10px;
-      border:1px solid color-mix(in oklab, var(--accent) 40%, var(--border));
-      background:var(--accent); color:#fff; font-weight:700; cursor:pointer;
-      box-shadow:0 6px 20px rgba(0,0,0,.25); transition:transform .06s ease,opacity .2s ease;
+
+    /* === Match your site .btn (Kontakt) style === */
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:9px 14px;
+      border-radius:12px;
+      font-weight:600;
+      cursor:pointer;
+      border:0;
+      background:var(--border);
+      color:var(--text);
+      transition:transform .06s ease, box-shadow .3s ease;
+      -webkit-tap-highlight-color:transparent;
+      box-shadow:0 10px 40px rgba(0,0,0,.35);
     }
-    .back:hover{ transform:translateY(-1px); opacity:.95; }
+    .btn:hover{ transform:translateY(-1px); box-shadow:0 10px 40px rgba(0,0,0,.5); }
+
+    /* Positioning for the popup's back button */
+    .back{
+      position:fixed; top:12px; right:12px; z-index:2;
+    }
+
     .hint{
       position:fixed; bottom:12px; right:12px;
       color:var(--muted); font-size:12px; opacity:.85;
@@ -161,7 +171,7 @@
 <body>
   <div class="wrap" id="backdrop" role="button" aria-label="Fenster schließen">
     <img src="${src}" alt="Impression" id="viewer-img">
-    <button class="back" id="closeBtn" aria-label="Zurück">Zurück</button>
+    <button class="btn back" id="closeBtn" aria-label="Zurück">Zurück</button>
     <div class="hint">Klick aufs Bild oder ESC schließt</div>
   </div>
   <script>
@@ -203,32 +213,67 @@
   }
 })();
 
-/* =============== ADD-ON: Unstick header after ~10% page depth =============== */
+/* =============== FORCE-UNSTICK after ~10% page depth (robust) =============== */
 (() => {
   const header = document.querySelector("header");
   if (!header) return;
 
-  const UNSTICK_FRAC = 0.10; // 10% of page scroll depth
+  const STYLE_ID = "unstick-enforcer-style";
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement("style");
+    style.id = STYLE_ID;
+    style.textContent = `
+      header[data-unstuck="false"] { position: sticky !important; top: 0 !important; }
+      header[data-unstuck="true"]  { position: static !important; top: auto !important; }
+    `;
+    document.head.appendChild(style);
+  }
 
-  let ticking = false;
-  function calcAndToggle() {
+  const FRACTION = 0.10; // 10%
+  let thresholdPx = 0;
+  let lastUnstuck = null;
+  let raf = 0;
+
+  function computeThreshold() {
     const doc = document.documentElement;
-    const y = window.scrollY || doc.scrollTop || 0;
-    const max = Math.max(1, doc.scrollHeight - window.innerHeight);
-    const frac = y / max;
-    header.classList.toggle("unstuck", frac > UNSTICK_FRAC);
+    const totalScrollable = Math.max(0, doc.scrollHeight - window.innerHeight);
+    thresholdPx = Math.round(totalScrollable * FRACTION);
+    if (!thresholdPx || thresholdPx < Math.round(window.innerHeight * 0.08)) {
+      thresholdPx = Math.round(window.innerHeight * 0.10);
+    }
+  }
+
+  function applyState() {
+    const y = window.scrollY || 0;
+    const unstuck = y >= thresholdPx;
+    if (unstuck !== lastUnstuck) {
+      header.setAttribute("data-unstuck", unstuck ? "true" : "false");
+      lastUnstuck = unstuck;
+    }
   }
 
   function onScroll() {
-    if (ticking) return;
-    ticking = true;
-    requestAnimationFrame(() => {
-      calcAndToggle();
-      ticking = false;
+    if (raf) return;
+    raf = requestAnimationFrame(() => {
+      applyState();
+      raf = 0;
     });
   }
 
-  document.addEventListener("scroll", onScroll, { passive: true });
-  window.addEventListener("resize", onScroll);
-  calcAndToggle();
+  const recalc = () => {
+    computeThreshold();
+    applyState();
+  };
+
+  window.addEventListener("scroll", onScroll, { passive: true });
+  ["load", "resize", "orientationchange", "pageshow"].forEach((ev) =>
+    window.addEventListener(ev, recalc, { passive: true })
+  );
+
+  const mo = new MutationObserver(() => recalc());
+  mo.observe(document.documentElement, { childList: true, subtree: true });
+
+  setTimeout(recalc, 300);
+  setTimeout(recalc, 1200);
+  recalc();
 })();
