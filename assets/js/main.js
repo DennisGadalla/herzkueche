@@ -28,14 +28,8 @@
       if (!track || !banner) return;
 
       const base = "assets/img/impressions/";
-      const maxImages = 120;
+      const maxImages = 100;
       const exts = ["jpg", "jpeg", "png", "webp"];
-      const patterns = [
-        (i, ext) => `impression-${i}.${ext}`,
-        (i, ext) => `${i}.${ext}`,
-        (i, ext) => `img-${i}.${ext}`,
-        (i, ext) => `photo-${i}.${ext}`
-      ];
 
       const loadImage = (src) =>
         new Promise((resolve) => {
@@ -45,46 +39,25 @@
           img.src = src;
         });
 
-      const findExistingForIndex = async (i) => {
+      const loadFirstExisting = async (i) => {
         for (const ext of exts) {
-          for (const pat of patterns) {
-            // eslint-disable-next-line no-await-in-loop
-            const ok = await loadImage(base + pat(i, ext));
-            if (ok) return ok;
-          }
+          // eslint-disable-next-line no-await-in-loop
+          const ok = await loadImage(`${base}impression-${i}.${ext}`);
+          if (ok) return ok;
         }
         return null;
       };
 
       (async () => {
-        let sources = [];
+        const tasks = [];
+        for (let i = 1; i <= maxImages; i++) tasks.push(loadFirstExisting(i));
+        const results = await Promise.all(tasks);
+        const valid = results.filter(Boolean);
+        if (!valid.length) return;
 
-        // 1) If user already placed <img> in the track, use those
-        const presetImgs = Array.from(track.querySelectorAll("img"))
-          .map((img) => img.getAttribute("src"))
-          .filter(Boolean);
-        if (presetImgs.length) {
-          sources = presetImgs;
-        } else {
-          // 2) Probe filenames with multiple patterns
-          const tasks = [];
-          for (let i = 1; i <= maxImages; i++) tasks.push(findExistingForIndex(i));
-          const results = await Promise.all(tasks);
-          sources = results.filter(Boolean);
-        }
+        // duplicate for seamless loop
+        const all = valid.concat(valid);
 
-        if (!sources.length) {
-          // nothing found; bail out silently
-          return;
-        }
-
-        // duplicate list for seamless loop
-        const all = sources.concat(sources);
-
-        // clear track (in case preset existed, we’ll rebuild for duplication)
-        track.innerHTML = "";
-
-        // append images
         const frag = document.createDocumentFragment();
         for (const src of all) {
           const img = document.createElement("img");
@@ -105,14 +78,15 @@
   /* =============== Impressions: interactivity =============== */
   function setupImpressionsInteractions(banner, track) {
     // --- Auto-scroll via rAF ---
-    let auto = { running: true, speed: 0.22 }; // px/frame (~13px/s @60fps)
+    let auto = { running: true, speed: 0.25 }; // px per frame (~15px/s @60fps)
     let rafId = null;
 
     const loop = () => {
       if (auto.running) {
         banner.scrollLeft += auto.speed;
-        const half = track.scrollWidth / 2; // images are duplicated
-        if (half > 0 && banner.scrollLeft >= half) banner.scrollLeft -= half;
+        // seamless reset when we've scrolled half (images are duplicated)
+        const half = track.scrollWidth / 2;
+        if (banner.scrollLeft >= half) banner.scrollLeft -= half;
       }
       rafId = requestAnimationFrame(loop);
     };
@@ -136,16 +110,12 @@
 
     const onPointerMove = (e) => {
       if (!isDown) return;
-      const delta = e.clientX - startX;
+      const delta = (e.clientX - startX);
       if (Math.abs(delta) > 3) moved = true;
       banner.scrollLeft = startLeft - delta;
-
-      // seamless backwards loop
+      // seamless loop backwards as well
       const half = track.scrollWidth / 2;
-      if (half > 0 && banner.scrollLeft < 0) banner.scrollLeft += half;
-
-      // prevent page scroll on touch while dragging horizontally
-      e.preventDefault?.();
+      if (banner.scrollLeft < 0) banner.scrollLeft += half;
     };
 
     const onPointerUp = (e) => {
@@ -153,8 +123,8 @@
       isDown = false;
       banner.classList.remove("dragging");
       banner.releasePointerCapture?.(e.pointerId);
-      // resume auto scroll after a short pause
-      setTimeout(() => (auto.running = true), 180);
+      // resume auto scroll after a brief delay
+      setTimeout(() => (auto.running = true), 150);
     };
 
     banner.addEventListener("pointerdown", onPointerDown);
@@ -163,27 +133,23 @@
     banner.addEventListener("pointercancel", onPointerUp);
     banner.addEventListener("pointerleave", onPointerUp);
 
-    // Prevent image ghost-drag
+    // Prevent dragging images ghost
     track.addEventListener("dragstart", (e) => e.preventDefault());
 
     // --- Click to open lightbox (ignore if it was a drag) ---
     track.addEventListener("click", (e) => {
       const img = e.target.closest("img");
       if (!img) return;
-      if (moved) return; // don’t open on drag
+      if (moved) return; // don't open when user dragged
       openLightbox(img.src);
     });
 
-    // Wheel pause/resume
-    banner.addEventListener(
-      "wheel",
-      () => {
-        auto.running = false;
-        clearTimeout(banner._wheelTimer);
-        banner._wheelTimer = setTimeout(() => (auto.running = true), 300);
-      },
-      { passive: true }
-    );
+    // Allow wheel to pause briefly then resume
+    banner.addEventListener("wheel", () => {
+      auto.running = false;
+      clearTimeout(banner._wheelTimer);
+      banner._wheelTimer = setTimeout(() => (auto.running = true), 300);
+    }, { passive: true });
   }
 
   /* =============== Lightbox =============== */
@@ -225,7 +191,7 @@
   const header = document.querySelector("header");
   if (header) {
     let ticking = false;
-    const threshold = 10;
+    const threshold = 10; // was 30 → earlier activation
     const onScroll = () => {
       if (!ticking) {
         window.requestAnimationFrame(() => {
