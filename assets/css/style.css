@@ -649,3 +649,34 @@ header.nav-hidden {
 @media (max-width: 600px) {
   .galerie-grid { grid-template-columns: 1fr; }
 }
+
+/* Softer bold text in content (keeps buttons/header unchanged) */
+:where(.card, .hero, .legal-wrap) :where(strong, b) {
+  /* Slightly lighten bold vs. body text */
+  color: color-mix(in oklab, var(--text) 80%, var(--muted) 12%);
+  /* Optional: make "bold" a touch lighter in weight; uncomment if desired */
+  /* font-weight: 600; */
+}
+
+/* Stilvollere Aufzählungspunkte (dezent, theme-aware) */
+:where(.card, .hero) ul {
+  margin: 8px 0 0;
+  padding-inline-start: 1.2rem;
+}
+
+:where(.card, .hero) li {
+  margin: 6px 0;
+  line-height: 1.6;
+}
+
+/* Farbige Marker, leicht größer, passend zu --accent */
+:where(.card, .hero) li::marker {
+  font-size: 1.1em;
+  color: color-mix(in oklab, var(--accent) 70%, var(--text) 30%);
+}
+
+/* Optional: etwas weichere Textfarbe in Listen (sehr dezent) */
+:where(.card, .hero) li > :where(strong,b) {
+  color: color-mix(in oklab, var(--text) 92%, var(--muted) 8%);
+}
+
