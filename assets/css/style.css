@@ -504,6 +504,7 @@ footer {
 .legal-wrap {
   max-width: 820px;
   padding: 36px 0 56px;
+  padding-inline-start: 14px; /* ~14px left indent */
 }
 .legal-wrap p {
   margin: 10 0 14px;
@@ -540,6 +541,7 @@ footer {
   margin: 18px 0 8px;
 }
 .legal-wrap h1:first-child { margin-top: 0; }
+
 
 /* ===== Fix: remove unwanted left bar on hover over text ===== */
 a:hover, p:hover, span:hover, li:hover,
