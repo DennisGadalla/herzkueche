@@ -78,7 +78,10 @@ header {
   background: color-mix(in oklab, var(--bg) 80%, transparent);
   overflow: visible;
   transition: opacity .2s ease, transform .2s ease, visibility .2s ease;
+  will-change: opacity, transform;
+  backface-visibility: hidden;
 }
+
 
 .nav {
   position: relative;

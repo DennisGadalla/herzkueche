@@ -1,7 +1,9 @@
 (() => {
   "use strict";
 
-  /* =============== Reveal cards =============== */
+  /* ===============================================================
+     1) Reveal cards on scroll (IntersectionObserver)
+     =============================================================== */
   const revealObserver = new IntersectionObserver(
     (entries, obs) => {
       for (const e of entries) {
@@ -15,11 +17,15 @@
   );
   document.querySelectorAll(".card").forEach((el) => revealObserver.observe(el));
 
-  /* =============== Auto year =============== */
+  /* ===============================================================
+     2) Auto-set year in footer
+     =============================================================== */
   const yearEl = document.getElementById("year");
   if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 
-  /* =============== Impressions: simple CSS-animated bar =============== */
+  /* ===============================================================
+     3) Impressions banner: discover images, animate track, click → popup
+     =============================================================== */
   document.addEventListener("DOMContentLoaded", async () => {
     const track = document.getElementById("impressions-track");
     const banner = track?.parentElement;
@@ -54,12 +60,12 @@
       return null;
     };
 
-    // 1) Use any preset <img> from HTML if present
+    // Prefer any preset <img> inside the track
     let sources = Array.from(track.querySelectorAll("img"))
       .map((el) => el.getAttribute("src"))
       .filter(Boolean);
 
-    // 2) Else discover by probing
+    // Else discover by probing file patterns
     if (!sources.length) {
       const tasks = [];
       for (let i = 1; i <= maxImages; i++) tasks.push(findExisting(i));
@@ -68,7 +74,7 @@
     }
     if (!sources.length) return;
 
-    // Build track: one set + duplicate (for seamless -50% keyframe loop)
+    // Build track content: one set + duplicate for seamless loop
     track.innerHTML = "";
     const appendSet = (srcs) => {
       const frag = document.createDocumentFragment();
@@ -84,7 +90,7 @@
     appendSet(sources);
     appendSet(sources);
 
-    // Adjust animation speed based on actual width
+    // Adjust animation duration to real width
     const halfWidth = track.scrollWidth / 2;
     if (halfWidth > 0) {
       const pxPerSec = 90; // slower idle scroll
@@ -92,19 +98,26 @@
       track.style.animationDuration = `${secs}s`;
     }
 
-    // Click → open image in a self-closing popup tab
+    // Click: open image in robust popup tab (absolute URL)
     track.addEventListener("click", (e) => {
       const img = e.target.closest("img");
       if (!img) return;
-      openImagePopupTab(img.src);
+      const abs =
+        img.currentSrc ||
+        new URL(img.getAttribute("src"), window.location.href).href;
+      openImagePopupTab(abs);
     });
   });
 
-  /* =============== Self-closing popup tab for images =============== */
+  /* ===============================================================
+     4) Popup tab viewer (robust; works with blockers & Safari)
+     =============================================================== */
   function openImagePopupTab(src) {
-    const w = window.open("", "_blank");
+    // Try a blank, no-opener window (safer & fewer quirks)
+    const w = window.open("about:blank", "_blank", "noopener,noreferrer");
+
+    // If blocked: fall back to opening the image URL directly
     if (!w) {
-      // Fallback if blocked
       const a = document.createElement("a");
       a.href = src;
       a.target = "_blank";
@@ -115,7 +128,9 @@
       return;
     }
 
-    // Minimal themed viewer that closes on click/Escape
+    // Escape quotes for safe attribute injection
+    const safeSrc = String(src).replace(/"/g, "&quot;");
+
     const html = `<!doctype html>
 <html lang="de">
 <head>
@@ -129,10 +144,7 @@
       --shadow:0 10px 40px rgba(0,0,0,.35);
     }
     @media (prefers-color-scheme: light){
-      :root{
-        --bg:#ffffff; --text:#211b17; --muted:#6b5c55;
-        --accent:#f16832; --border:#dfa79a;
-      }
+      :root{ --bg:#ffffff; --text:#211b17; --muted:#6b5c55; }
     }
     html,body{height:100%}
     body{
@@ -148,14 +160,11 @@
       box-shadow:0 20px 60px rgba(0,0,0,.5);
       cursor:zoom-out; user-select:none;
     }
-    /* === match Kontakt button (.btn) style === */
     .back{
       position:fixed; top:12px; right:12px;
       padding:9px 14px; border-radius:12px;
-      border:0 solid var(--border);
-      background:var(--border); color:var(--text);
-      font-weight:600; cursor:pointer;
-      box-shadow:var(--shadow);
+      border:0; background:#dfa79a; color:var(--text);
+      font-weight:600; cursor:pointer; box-shadow:var(--shadow);
       transition:transform .06s ease, opacity .2s ease;
     }
     .back:hover{ transform:translateY(-1px); opacity:.95; }
@@ -163,14 +172,12 @@
       position:fixed; bottom:12px; right:12px;
       color:var(--muted); font-size:12px; opacity:.85;
     }
-    @media (prefers-reduced-motion: reduce){
-      .back{ transition:none; }
-    }
+    @media (prefers-reduced-motion: reduce){ .back{ transition:none; } }
   </style>
 </head>
 <body>
   <div class="wrap" id="backdrop" role="button" aria-label="Fenster schließen">
-    <img src="\${src}" alt="Impression" id="img">
+    <img src="${safeSrc}" alt="Impression" id="img">
     <button class="back" id="closeBtn" aria-label="Zurück">Zurück</button>
     <div class="hint">Klick aufs Bild oder ESC schließt</div>
   </div>
@@ -189,12 +196,16 @@
   </script>
 </body>
 </html>`;
+
+    // Some Safari versions require synchronous write after open()
     w.document.open();
-    w.document.write(html.replace("\\${src}", src));
+    w.document.write(html);
     w.document.close();
   }
 
-  /* =============== Header: show 0–300px, hide afterwards =============== */
+  /* ===============================================================
+     5) Header visibility: show 0–300 px, hide >= 300 px
+     =============================================================== */
   (() => {
     const header = document.querySelector("header");
     if (!header) return;
@@ -211,7 +222,8 @@
         document.body.scrollTop ||
         0;
 
-      const shouldHide = y > NAV_HIDE_AFTER_PX;
+      // Inclusive threshold so it hides *at* 300 px
+      const shouldHide = y >= NAV_HIDE_AFTER_PX;
       if (hidden !== shouldHide) {
         header.classList.toggle("nav-hidden", shouldHide);
         hidden = shouldHide;
