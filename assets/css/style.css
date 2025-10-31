@@ -1,6 +1,8 @@
-/* ================= Base / Theme ================= */
+/* ===========================
+   Base / Theme
+   =========================== */
 :root {
-  /* Hauptfarben: etwas wärmer, freundlicher */
+  /* Warm/freundliche Palette */
   --bg: #121015;
   --text: #f4efe9;
   --muted: #c6bfb6;
@@ -9,9 +11,16 @@
   --accent: #ff7043;
   --accent-2: #f8b46e;
   --ring: rgba(255, 112, 67, .35);
+
+  /* Layout & UI */
   --maxw: 1080px;
   --radius: 14px;
   --shadow: 0 10px 40px rgba(0, 0, 0, .35);
+
+  /* Header/Logo Stellschrauben */
+  --container-pad: 20px; /* passt zu .container padding */
+  --logo-size: 84px;     /* Desktop-Logo-Größe */
+  --logo-dip: 6px;       /* Logo „überragt“ die Linie leicht */
 }
 
 @media (prefers-color-scheme: light) {
@@ -28,12 +37,12 @@
   }
 }
 
-/* ================= Reset / Base ================= */
+/* ===========================
+   Reset / Base
+   =========================== */
 * { box-sizing: border-box; }
 html, body { height: 100%; }
-/* Prevent any horizontal page scroll */
-html { overflow-x: hidden; }
-
+html { overflow-x: hidden; }   /* keine horizontale Seiten-Scroll */
 body {
   margin: 0;
   color: var(--text);
@@ -44,33 +53,48 @@ body {
 
 a { color: inherit; text-decoration: none; }
 img { max-width: 100%; display: block; }
-.container { max-width: var(--maxw); margin: 0 auto; padding: 0 20px; }
 
-/* ================= Header ================= */
+.container {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 0 var(--container-pad);
+}
+
+/* ===========================
+   Header & Navigation
+   =========================== */
 header {
   position: sticky;
   top: 0;
   z-index: 50;
   backdrop-filter: saturate(140%) blur(10px);
-  border-bottom: 1px solid var(--border);
+  /* wir zeichnen die Linie selbst (siehe .nav::after) */
+  border-bottom: none;
   background: color-mix(in oklab, var(--bg) 80%, transparent);
 }
 
 .nav {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 0;
+  padding: 12px 0 18px; /* unten Luft für Logo-Dip */
 }
 
-@media (max-width: 600px) {
-  header .links .btn {
-    height: 36px;
-    line-height: 36px;
-    padding: 0 12px;
-  }
+/* Weiche Linie unterhalb der Nav – startet NACH dem Logo */
+.nav::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--container-pad) + var(--logo-size) + 14px);
+  right: var(--container-pad);
+  bottom: 14px;
+  height: 1px;
+  background: var(--border);
+  pointer-events: none;
+  opacity: 1;
 }
 
+/* Brand/Logo */
 .brand {
   display: inline-flex;
   align-items: center;
@@ -78,8 +102,24 @@ header {
   font-weight: 700;
 }
 
-.brand svg { width: 28px; height: 28px; }
+.brand-logo {
+  width: var(--logo-size);
+  height: var(--logo-size);
+  display: block;
+  border-radius: 3px;
+  overflow: hidden;
+  object-fit: cover;
+  object-position: center;
+  /* leichter permanenter Zoom + minimal nach unten versetzt */
+  transform: translateY(var(--logo-dip)) scale(1.15);
+  transition: transform .35s ease, opacity .3s ease;
+}
+.brand-logo:hover {
+  transform: translateY(var(--logo-dip)) scale(1.2);
+  opacity: .9;
+}
 
+/* Links / Buttons im Header */
 .links { display: flex; gap: 18px; align-items: center; }
 
 .btn {
@@ -94,9 +134,7 @@ header {
   background: var(--card);
   transition: transform .06s ease, box-shadow .3s ease;
 }
-
 .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
-
 .btn.primary {
   background: var(--accent);
   color: #fff;
@@ -112,101 +150,30 @@ header {
   margin-bottom: 8px;
 }
 
-/* ================= Header Logo (leicht gezoomt) ================= */
-.brand-logo {
-  width: 100px;
-  height: 100px;
-  display: block;
-  border-radius: 6px;
-  overflow: hidden;
-  object-fit: cover;
-  object-position: center;
-  transform: scale(1.5); /* ~50% permanenter Zoom ins Motiv */
-  transition: transform .4s ease, opacity .3s ease;
-}
-
-.brand-logo:hover {
-  transform: scale(1.22);
-  opacity: .9;
-}
-
-.brand span {
-  font-size: 19px;
-  font-weight: 600;
-  letter-spacing: .5px;
-}
-
-/* ================= Header: Logo größer + Linie startet nach dem Logo ================= */
-/* Stellschrauben */
-:root {
-  --container-pad: 20px;   /* passt zu .container padding */
-  --logo-size: 84px;       /* Logo-Größe auf Desktop */
-  --logo-dip: 6px;         /* wie weit das Logo nach unten "überragt" */
-}
-
-header {
-  /* ggf. vorhandene untere Border ausblenden, wir zeichnen die Linie selbst */
-  border-bottom: none;
-}
-
-/* Die Nav bekommt eine eigene (weiche) Linie, die rechts vom Logo startet */
-.nav {
-  position: relative;
-  padding: 12px 0 18px; /* unten etwas Luft für den Logo-"Dip" */
-}
-
-/* Die horizontale Linie unter dem Header, beginnend NACH dem Logo */
-.nav::after {
-  content: "";
-  position: absolute;
-  left: calc(var(--container-pad) + var(--logo-size) + 14px);
-  right: var(--container-pad);
-  bottom: 14px;
-  height: 1px;
-  background: var(--border);
-  opacity: 1;
-  pointer-events: none;
-}
-
-/* Logo größer + leicht in die Linie "hinein" */
-.brand-logo {
-  width: var(--logo-size);
-  height: var(--logo-size);
-  border-radius: 3px;
-  object-fit: cover;
-  object-position: center;
-  /* leichter permanenter Zoom + minimal nach unten versetzt */
-  transform: translateY(var(--logo-dip)) scale(1.15);
-  transition: transform 0.35s ease, opacity 0.3s ease;
-}
-
-.brand-logo:hover {
-  transform: translateY(var(--logo-dip)) scale(1.2);
-  opacity: 0.9;
-}
-
-/* ---------- Responsive Feintuning ---------- */
-@media (max-width: 900px) {
-  :root {
-    --logo-size: 64px;   /* etwas kleiner auf Tablet */
-    --logo-dip: 4px;
+/* Header – mobile Button etwas kompakter */
+@media (max-width: 600px) {
+  header .links .btn {
+    height: 36px;
+    line-height: 36px;
+    padding: 0 12px;
   }
+}
+
+/* Logo/Line responsive Feintuning */
+@media (max-width: 900px) {
+  :root { --logo-size: 64px; --logo-dip: 4px; }
   .nav { padding-bottom: 16px; }
 }
-
 @media (max-width: 600px) {
-  :root {
-    --logo-size: 56px;   /* Smartphone */
-    --logo-dip: 3px;
-  }
-  /* Linie darf am Handy etwas früher starten (mehr Platz) */
+  :root { --logo-size: 56px; --logo-dip: 3px; }
   .nav::after {
     left: calc(var(--container-pad) + var(--logo-size) + 10px);
   }
 }
 
-
-/* ================= Hero ================= */
+/* ===========================
+   Hero
+   =========================== */
 .hero-wrap {
   position: relative;
   overflow: hidden;
@@ -215,7 +182,7 @@ header {
 
 .hero {
   display: flex;
-  flex-direction: column; /* mobile: stacked */
+  flex-direction: column; /* mobil: gestapelt */
   align-items: center;
   justify-content: center;
   gap: 24px;
@@ -230,13 +197,9 @@ header {
 }
 
 .hero p { margin: 6px 0 16px; color: var(--muted); }
-
 .hero-content { max-width: 640px; }
 
-.hero-image {
-  display: flex;
-  justify-content: center;
-}
+.hero-image { display: flex; justify-content: center; }
 
 .hero-portrait {
   width: 180px;
@@ -247,13 +210,12 @@ header {
   box-shadow: 0 6px 18px rgba(0, 0, 0, .35);
   transition: transform .4s ease, box-shadow .4s ease;
 }
-
 .hero-portrait:hover {
   transform: scale(1.05);
   box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
 }
 
-/* Mobile tweaks for Hero */
+/* Hero responsive */
 @media (max-width: 899px) {
   .hero { flex-direction: column-reverse; }
   .hero-portrait {
@@ -262,8 +224,6 @@ header {
     margin-bottom: 24px;
   }
 }
-
-/* Desktop Layout */
 @media (min-width: 900px) {
   .hero {
     flex-direction: row;
@@ -276,19 +236,17 @@ header {
   .hero-image { flex: 0 0 auto; }
   .hero-portrait { width: 300px; height: 300px; margin-right: 0; }
 }
-
 @media (min-width: 1300px) {
   .hero-portrait { width: 360px; height: 360px; }
 }
 
-/* (Legacy) Hero background slideshow – aktuell ungenutzt, belassen für später */
+/* (Legacy) Hero-Background-Slideshow – zur evtl. späteren Nutzung belassen */
 .hero-bg-slideshow {
   position: absolute;
   inset: 0;
   overflow: hidden;
   z-index: -1;
 }
-
 .hero-bg-slideshow img {
   position: absolute;
   width: 100%;
@@ -299,7 +257,9 @@ header {
   transition: opacity 2s ease-in-out;
 }
 
-/* ================= Sections / Grid ================= */
+/* ===========================
+   Sections / Grid
+   =========================== */
 section { padding: 56px 0; }
 
 .grid {
@@ -307,7 +267,6 @@ section { padding: 56px 0; }
   gap: 16px;
   grid-template-columns: repeat(12, 1fr);
 }
-
 .col-4 { grid-column: span 4; }
 .col-6 { grid-column: span 6; }
 .col-8 { grid-column: span 8; }
@@ -330,18 +289,15 @@ section { padding: 56px 0; }
     opacity .6s ease,
     box-shadow .3s ease;
 }
-
 .card:hover { transform: translateY(0) scale(1.01); }
 .reveal { opacity: 1; transform: translateY(0) scale(1); }
 
-/* ================= Timeline ================= */
+/* Timeline */
 .timeline {
   border-left: 2px solid var(--border);
   padding-left: 16px;
 }
-
 .t-item { margin: 14px 0; position: relative; }
-
 .t-item::before {
   content: "";
   position: absolute;
@@ -354,7 +310,9 @@ section { padding: 56px 0; }
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 35%, transparent);
 }
 
-/* ================= Footer ================= */
+/* ===========================
+   Footer
+   =========================== */
 footer {
   padding: 28px 0;
   border-top: 1px solid var(--border);
@@ -363,7 +321,7 @@ footer {
   text-align: center;
 }
 
-/* Footer link styling */
+/* Footer Links (z. B. Impressum) */
 .footer-link {
   color: var(--muted);
   text-decoration: none;
@@ -378,9 +336,9 @@ footer {
   outline: none;
 }
 
-
-
-/* ================= Contact Form ================= */
+/* ===========================
+   Contact Form
+   =========================== */
 .contact-form input,
 .contact-form textarea {
   width: 100%;
@@ -395,47 +353,41 @@ footer {
   margin-bottom: 12px;
   transition: border-color .2s ease, box-shadow .2s ease;
 }
-
 .contact-form input:focus,
 .contact-form textarea:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--ring);
 }
 
+/* ===========================
+   Impressions – Scrolling Banner
+   =========================== */
 /* ================= Impressions Scrolling Banner ================= */
 .impressions-banner {
   position: relative;
   width: 100%;
-  height: 200px;          /* fixed band height */
-  overflow: hidden;        /* 🚫 no scrollbars in either direction */
+  height: 200px;              /* band height */
+  padding-top: 8px;           /* headroom so hover zoom isn't clipped */
+  overflow: hidden;           /* keep bars hidden */
   border-top: none;
   border-bottom: none;
   background: var(--bg);
   margin: 8px 0;
-
-  /* hide scrollbars cross-browser (belt & suspenders) */
-  scrollbar-width: none;         /* Firefox */
-  -ms-overflow-style: none;      /* IE/Edge legacy */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
-.impressions-banner::-webkit-scrollbar { width:0; height:0; } /* WebKit */
+.impressions-banner::-webkit-scrollbar { width:0; height:0; }
 
 .impressions-track {
   display: flex;
-  align-items: center;           /* vertically center tiles without padding */
+  align-items: center;
   width: max-content;
   animation: scrollImpressions 120s linear infinite;
-  /* no vertical padding that could create extra height */
 }
 
-/* Pause when the user hovers the band (optional) */
-.impressions-track:hover {
-  animation-play-state: paused;
-}
-
-/* Tiles slightly smaller than band; hover scale stays < 200px */
 .impressions-banner img {
-  width: 188px;
-  height: 188px;                 /* 188 * 1.06 ≈ 199.3 < 200 */
+  width: 188px;               /* < 200 so 1.06x stays inside */
+  height: 188px;
   flex-shrink: 0;
   object-fit: cover;
   margin-right: 10px;
@@ -446,32 +398,32 @@ footer {
   will-change: transform;
   cursor: zoom-in;
 }
-
 .impressions-banner img:hover {
-  transform: scale(1.06);        /* stays inside 200px band → no vertical bar */
+  transform: scale(1.06);     /* 188 * 1.06 ≈ 199.3 < 200 */
   filter: brightness(.98) saturate(118%);
 }
 
+
 @keyframes scrollImpressions {
   0%   { transform: translateX(0); }
-  100% { transform: translateX(-50%); } /* track has duplicated set */
+  100% { transform: translateX(-50%); } /* Track hat Duplikat */
 }
 
-/* Mobile: optional tiny reduction to be extra safe */
 @media (max-width: 600px) {
   .impressions-banner img { width: 184px; height: 184px; }
 }
 
 
 
-/* ================= Hero Social Links ================= */
+/* ===========================
+   Hero – Social Links
+   =========================== */
 .hero-social {
   margin-top: 20px;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-
 .insta-link,
 .yt-link {
   display: inline-flex;
@@ -481,36 +433,107 @@ footer {
   text-decoration: none;
   transition: all .3s ease;
 }
-
 .insta-link { color: var(--accent); }
 .yt-link { color: #ff4d4d; }
-
 .insta-link svg,
 .yt-link svg {
   flex-shrink: 0;
   transition: transform .3s ease, color .3s ease;
 }
-
 .insta-link:hover {
   color: #e1306c;
   transform: translateY(-1px);
 }
-
 .insta-link:hover svg {
   transform: scale(1.1);
   color: #e1306c;
 }
-
 .yt-link:hover {
   color: #ff0000;
   transform: translateY(-1px);
 }
-
 .yt-link:hover svg {
   transform: scale(1.1);
   color: #ff0000;
 }
-
 @media (max-width: 899px) {
   .hero-social { align-items: center; }
+}
+
+/* ===========================
+   Legal / Impressum
+   (schlicht, ohne Karte)
+   =========================== */
+.legal-wrap {
+  max-width: 820px;
+  padding: 36px 0 56px;
+}
+.legal-wrap p {
+  margin: 0 0 14px;
+  color: var(--muted);
+}
+.legal-address {
+  font-style: normal;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.legal-wrap a {
+  color: var(--text);
+  border-bottom: 1px dashed
+    color-mix(in oklab, var(--text) 60%, transparent);
+  text-decoration: none;
+  transition: color .2s ease, border-color .2s ease, opacity .2s ease;
+}
+.legal-wrap a:hover {
+  opacity: .9;
+  border-bottom-color: currentColor;
+}
+.legal-sep {
+  height: 1px;
+  border: 0;
+  background: color-mix(in oklab, var(--border) 80%, transparent);
+  margin: 26px 0;
+  opacity: .8;
+}
+/* Headings im Impressum: nur bold, nicht größer */
+.legal-wrap h1,
+.legal-wrap h2 {
+  font-size: inherit;
+  font-weight: 700;
+  line-height: 1.5;
+  margin: 18px 0 8px;
+}
+.legal-wrap h1:first-child { margin-top: 0; }
+
+@media (max-width: 480px) {
+  .legal-wrap { padding: 28px 0 48px; }
+}
+
+/* ===== Fix: remove unwanted left bar on hover over text ===== */
+/* Never touch keyboard focus visuals */
+a:hover, p:hover, span:hover, li:hover,
+h1:hover, h2:hover, h3:hover, h4:hover, h5:hover, h6:hover {
+  border-left: none !important;
+  outline: none;            /* hover only; focus stays intact */
+  box-shadow: none;         /* in case an extension injects one */
+}
+
+/* Block injected pseudo-element bars */
+a::before, p::before, span::before, li::before,
+h1::before, h2::before, h3::before, h4::before, h5::before, h6::before {
+  content: none !important;
+  border-left: none !important;
+  box-shadow: none !important;
+}
+
+/* Also prevent any left border on anchors in general */
+a {
+  border-left: none !important;
+}
+
+/* If the bar was a text-decoration trick, ensure only normal underline */
+a {
+  text-decoration-thickness: auto;
+  text-underline-offset: auto;
+  text-decoration-style: solid;
 }

@@ -43,7 +43,7 @@
           img.src = src;
         });
 
-      // Try extensions sequentially for each index to avoid 3x redundant failed requests
+      // Try extensions sequentially for each index to avoid redundant failures
       const loadFirstExisting = async (i) => {
         for (const ext of extensions) {
           const src = `${base}impression-${i}.${ext}`;
@@ -64,7 +64,7 @@
         const valid = results.filter(Boolean);
         if (!valid.length) return;
 
-        // Duplicate list for seamless loop
+        // Duplicate list for seamless -50% CSS animation loop
         const allImages = valid.concat(valid);
 
         // Fill the track
@@ -72,9 +72,31 @@
         for (const src of allImages) {
           const img = document.createElement("img");
           img.src = src;
+          img.loading = "lazy";
+          img.decoding = "async";
+          img.draggable = false; // no ghost-drag
           frag.appendChild(img);
         }
+        track.textContent = "";
         track.appendChild(frag);
+
+        // Set animation duration based on width (~110px/sec; min 40s)
+        const halfWidth = track.scrollWidth / 2;
+        if (halfWidth > 0) {
+          const pxPerSec = 55;
+          const secs = Math.max(80, Math.round(halfWidth / pxPerSec));
+          track.style.animationDuration = `${secs}s`;
+        }
+
+        // Click to open image in new tab
+        track.addEventListener("click", (e) => {
+          const img = e.target.closest("img");
+          if (!img) return;
+          window.open(img.src, "_blank", "noopener,noreferrer");
+        });
+
+        // Safety: prevent dragstart from browsers that ignore draggable=false
+        track.addEventListener("dragstart", (e) => e.preventDefault());
       })();
     },
     { passive: true }
@@ -104,6 +126,3 @@
     onScroll();
   }
 })();
-
-
-
