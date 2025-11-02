@@ -247,8 +247,8 @@ header {
 @media (max-width: 899px) {
   .hero { flex-direction: column-reverse; }
   .hero-portrait {
-    width: 225px;
-    height: 225px;
+    width: 350px;
+    height: 350px;
     margin-bottom: 24px;
   }
 }
@@ -337,6 +337,45 @@ section { padding: 56px 0; }
 @media (max-width: 420px) {
   .card-logo { width: 38px; height: 38px; }
 }
+/* Über mich: Text + rundes Bild (flex, Bild rechts) */
+.about-grid {
+  display: flex;
+  align-items: center;  /* vertikal mittig */
+  gap: 24px;
+}
+
+.about-text {
+  order: 1;            /* Text links */
+  flex: 1 1 auto;
+}
+
+.about-photo {
+  order: 2;            /* Bild rechts */
+  flex: 0 0 220px;
+  margin: 0;
+  align-self: center;
+}
+
+.about-img {
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  box-shadow: var(--shadow);
+}
+
+/* Smartphones: Bild unter dem Text */
+@media (max-width: 720px) {
+  .about-grid {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  .about-text { order: 1; }
+  .about-photo { order: 2; align-self: flex-start; } /* oder center */
+}
+
 
 /* Timeline */
 .timeline { border-left: 2px solid var(--border); padding-left: 16px; }
