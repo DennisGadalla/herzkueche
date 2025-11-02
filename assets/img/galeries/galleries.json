@@ -1,4 +1,5 @@
 { "galleries": [
-  { "id": "pasta",   "title": "Pasta",   "count": 5 },
-  { "id": "dessert", "title": "Dessert", "count": 4 }
+  { "id": "Buffets",   "title": "Buffets",   "count": 62 },
+  { "id": "Herzkueche", "title": "Herzküche", "count": 46 },
+  { "id": "Dining", "title": "Dining", "count": 48 }
 ]}
