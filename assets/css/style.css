@@ -365,16 +365,39 @@ section { padding: 56px 0; }
   box-shadow: var(--shadow);
 }
 
+/* Desktop: a bit more space between text and image */
+@media (min-width: 721px) {
+  .about-grid {
+    gap: 32px; /* was 24px */
+  }
+}
+
+
 /* Smartphones: Bild unter dem Text */
+/* Smartphones: stack; image UNDER the text and centered horizontally */
 @media (max-width: 720px) {
   .about-grid {
     flex-direction: column;
     align-items: stretch;
     gap: 16px;
   }
+
   .about-text { order: 1; }
-  .about-photo { order: 2; align-self: flex-start; } /* oder center */
+
+  /* Center the figure horizontally */
+  .about-photo {
+    order: 2;
+    align-self: center;     /* <-- centers the figure in the column */
+    margin: 0;              /* ensure no side offset */
+  }
+
+  /* Ensure the image itself is centered inside the figure */
+  .about-img {
+    display: block;
+    margin-inline: auto;    /* <-- centers image horizontally */
+  }
 }
+
 
 
 /* Timeline */
