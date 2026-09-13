@@ -41,17 +41,20 @@ async function auditHome(browser, viewport) {
     assert.equal(await page.locator(selector).count(), 1, `${selector} missing`);
   }
   assert.equal(await page.locator('input[name="botcheck"]').count(), 1, "botcheck missing");
+  assert.equal(await page.locator(".form-privacy a").getAttribute("href"), "datenschutz.html", "privacy notice must link to policy");
   assert.equal(await page.locator("[data-event-calendar]").getAttribute("download"), "", "calendar link should download");
+  assert.ok((await page.locator("head link[rel=canonical]").getAttribute("href")).includes("sabines-herzkueche.de"));
+  assert.equal(await page.locator('script[data-site-schema]').count(), 1, "structured data missing");
 
   if (viewport.width <= 620) {
     const sticky = page.locator("[data-sticky-contact]");
     assert.equal(await sticky.count(), 1, "mobile sticky CTA missing");
     assert.equal(await sticky.isVisible(), false, "sticky CTA should start hidden");
     await page.locator("#about").scrollIntoViewIfNeeded();
-    await page.waitForTimeout(80);
+    await page.waitForTimeout(120);
     assert.equal(await sticky.isVisible(), true, "sticky CTA should appear after hero");
     await page.locator("#kontakt").scrollIntoViewIfNeeded();
-    await page.waitForTimeout(80);
+    await page.waitForTimeout(120);
     assert.equal(await sticky.isVisible(), false, "sticky CTA should hide at contact section");
   }
 
@@ -59,13 +62,15 @@ async function auditHome(browser, viewport) {
   await context.close();
 }
 
-async function auditProgressiveEnhancement(browser) {
+async function auditNoJsBaseline(browser) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, javaScriptEnabled: false });
   const page = await context.newPage();
   await open(page, "/index.html");
-  assert.equal(await page.locator("[data-service-card]").count(), 4, "services must exist without JS");
-  assert.equal(await page.locator(".gallery-card").count(), 3, "gallery navigation must exist without JS");
-  assert.ok((await page.locator(".gallery-card").first().getAttribute("href")).includes("galerie.html?g="));
+  assert.equal(await page.locator("#angebot").isVisible(), true, "offer content must remain readable without JS");
+  assert.equal(await page.locator("#kontakt").isVisible(), true, "contact section must remain available without JS");
+  assert.equal(await page.locator("#contact-form").count(), 1, "contact form baseline missing");
+  assert.equal(await page.locator('a[href="tel:+491723614800"]').count(), 1, "phone fallback missing");
+  assert.equal(await page.locator('a[href^="mailto:"]').count() > 0, true, "email fallback missing");
   await context.close();
 }
 
@@ -74,17 +79,21 @@ async function auditGalleryNetwork(browser) {
   const page = await context.newPage();
   const requested = [];
   page.on("request", (request) => requested.push(new URL(request.url()).pathname));
-  await open(page, "/galerie.html?g=Buffets");
+  await open(page, "/galerie.html?g=Buffets&t=Legacy");
   await page.waitForFunction(() => document.querySelectorAll("#galerie-grid button").length === 12);
+  assert.equal(new URL(page.url()).searchParams.has("t"), false, "legacy gallery title query should be removed");
 
   const originalsBefore = requested.filter((pathname) => /\/assets\/img\/galeries\/Buffets\/img-\d+\.jpg$/.test(pathname));
   assert.equal(originalsBefore.length, 0, "gallery originals must not load before lightbox interaction");
   assert.ok(requested.some((pathname) => pathname.includes("/assets/img/galeries/thumbs/Buffets/")), "thumbnail requests expected");
 
   const fullRequest = page.waitForRequest((request) => /\/assets\/img\/galeries\/Buffets\/img-1\.jpg$/.test(new URL(request.url()).pathname));
-  await page.locator("#galerie-grid button").first().click();
+  const first = page.locator("#galerie-grid button").first();
+  await first.focus();
+  await first.click();
   await fullRequest;
   await page.locator(".lightbox-dialog-close").click();
+  assert.equal(await first.evaluate((node) => document.activeElement === node), true, "gallery lightbox should restore focus");
   await context.close();
 }
 
@@ -98,12 +107,16 @@ async function auditUnknownGallery(browser) {
   await context.close();
 }
 
-async function auditPrivacy(browser) {
+async function auditLegalRoutes(browser) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   await open(page, "/datenschutz.html");
   assert.equal(await page.locator("h1").textContent(), "Datenschutzerklärung");
   assert.equal(await page.locator('a[href="index.html#kontakt"]').count(), 1);
+  assert.equal(await page.locator('a[href="datenschutz.html"]').count() > 0, true);
+  await open(page, "/impressum.html");
+  assert.equal(await page.locator("h1").textContent(), "Impressum");
+  assert.match(await page.locator(".legal-intro").textContent(), /§ 5 DDG/);
   await context.close();
 }
 
@@ -112,14 +125,14 @@ async function auditPrivacy(browser) {
   try {
     await auditHome(browser, { width: 1440, height: 1000 });
     await auditHome(browser, { width: 390, height: 844 });
-    await auditProgressiveEnhancement(browser);
+    await auditNoJsBaseline(browser);
     await auditGalleryNetwork(browser);
     await auditUnknownGallery(browser);
-    await auditPrivacy(browser);
+    await auditLegalRoutes(browser);
   } finally {
     await browser.close();
   }
-  console.log("Platform audit PASS: accessibility, funnel, progressive enhancement, gallery network and privacy routes checked");
+  console.log("Platform audit PASS: accessibility, funnel, no-JS baseline, gallery network and legal routes checked");
 })().catch((error) => {
   console.error(error.stack || error);
   process.exitCode = 1;
