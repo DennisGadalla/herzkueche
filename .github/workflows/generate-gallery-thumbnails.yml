@@ -46,6 +46,8 @@ jobs:
                       thumb.save(destination, "WEBP", quality=76, method=6)
                   count += 1
 
+          if count != 146:
+              raise SystemExit(f"Expected 146 source images, found {count}")
           print(f"Generated {count} thumbnails")
           PY
       - name: Commit generated thumbnails
@@ -57,5 +59,7 @@ jobs:
             echo "No thumbnail changes"
           else
             git commit -m "perf: generate lightweight gallery thumbnails"
+            git fetch origin "${GITHUB_REF_NAME}"
+            git rebase "origin/${GITHUB_REF_NAME}"
             git push origin HEAD:"${GITHUB_REF_NAME}"
           fi
