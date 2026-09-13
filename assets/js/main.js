@@ -15,17 +15,10 @@
   function syncHeaderHeight() {
     const header = $("header");
     if (!header) return;
-
-    const update = () => {
-      document.documentElement.style.setProperty("--header-h", `${header.offsetHeight}px`);
-    };
-
+    const update = () => document.documentElement.style.setProperty("--header-h", `${header.offsetHeight}px`);
     update();
-    if ("ResizeObserver" in window) {
-      new ResizeObserver(update).observe(header);
-    } else {
-      window.addEventListener("resize", update, { passive: true });
-    }
+    if ("ResizeObserver" in window) new ResizeObserver(update).observe(header);
+    else window.addEventListener("resize", update, { passive: true });
   }
 
   function getEventState(startIso, endIso, now = Date.now()) {
@@ -37,14 +30,16 @@
     return "upcoming";
   }
 
+  function findOption(select, value) {
+    if (!select || !value) return null;
+    return Array.from(select.options || []).find((option) => option.value === value) || null;
+  }
+
   function initEventLifecycle() {
     const card = $("[data-event-card]");
     if (!card) return;
 
-    // Use the explicit data-event-end timestamp so expiry is independent of the visitor's timezone.
-    const startIso = card.getAttribute("data-event-start");
-    const endIso = card.getAttribute("data-event-end");
-    const state = getEventState(startIso, endIso);
+    const state = getEventState(card.getAttribute("data-event-start"), card.getAttribute("data-event-end"));
     const currentSection = $("#supperclub");
     const pastSection = $("#vergangene-veranstaltungen");
     const pastList = $("#past-events-list");
@@ -52,17 +47,13 @@
     const tag = $("[data-event-status]", card);
     const cta = $("[data-event-inquiry]", card);
     const topicValue = card.getAttribute("data-event-topic");
-    const topicOption = topicValue
-      ? $(`#topic option[value="${CSS.escape(topicValue)}"]`)
-      : null;
+    const topicOption = findOption($("#topic"), topicValue);
 
     card.dataset.eventState = state;
-
     if (state === "live") {
       if (tag) tag.textContent = "Heute";
       return;
     }
-
     if (state !== "past") return;
 
     card.classList.add("event-card--past");
@@ -75,7 +66,6 @@
       pastSection.hidden = false;
       if (currentSection) currentSection.hidden = true;
     }
-
     if (navLink) {
       navLink.href = "#vergangene-veranstaltungen";
       navLink.textContent = "Veranstaltungen";
@@ -94,24 +84,16 @@
 
     const topicValue = card.getAttribute("data-event-topic") || "Supperclub";
     const dateLabel = card.getAttribute("data-event-date-label") || "";
-
     eventButton.addEventListener("click", () => {
-      if ($(`#topic option[value="${CSS.escape(topicValue)}"]`)) {
-        topic.value = topicValue;
-      }
+      if (findOption(topic, topicValue)) topic.value = topicValue;
       subject.value = `${topicValue} – Platzanfrage`;
-
       if (!message.value.trim()) {
         message.value = [
-          "Hallo Sabine,",
-          "",
+          "Hallo Sabine,", "",
           `ich interessiere mich für das Supperclub Dinner${dateLabel ? ` am ${dateLabel}` : ""}.`,
-          "Personenzahl: ",
-          "",
-          "Liebe Grüße"
+          "Personenzahl: ", "", "Liebe Grüße"
         ].join("\n");
       }
-
       window.setTimeout(() => {
         form.scrollIntoView({ behavior: "smooth", block: "start" });
         name?.focus({ preventScroll: true });
@@ -123,7 +105,6 @@
     const topic = $("#topic");
     const subject = $("#contact-subject");
     if (!topic || !subject) return;
-
     topic.addEventListener("change", () => {
       subject.value = `${topic.value} – Anfrage über Sabines Herzküche`;
     });
@@ -134,7 +115,6 @@
     const dialog = $("#poster-dialog");
     const closeButton = $("[data-poster-close]");
     if (!posterLink || !dialog || typeof dialog.showModal !== "function") return;
-
     posterLink.addEventListener("click", (event) => {
       event.preventDefault();
       dialog.showModal();
@@ -151,7 +131,6 @@
 
   function ensureLightbox() {
     if (lightbox) return lightbox;
-
     lightbox = document.createElement("dialog");
     lightbox.className = "lightbox-dialog";
     lightbox.setAttribute("aria-labelledby", "lightbox-title");
@@ -163,7 +142,6 @@
         </div>
         <img alt="" />
       </div>`;
-
     document.body.appendChild(lightbox);
     lightboxImage = $("img", lightbox);
     lightboxTitle = $("#lightbox-title", lightbox);
@@ -181,7 +159,7 @@
     if (!(image instanceof HTMLImageElement)) return;
     const dialog = ensureLightbox();
     if (!lightboxImage || typeof dialog.showModal !== "function") return;
-    lightboxImage.src = image.currentSrc || image.src;
+    lightboxImage.src = image.dataset.fullSrc || image.currentSrc || image.src;
     lightboxImage.alt = image.alt || "Bildansicht";
     if (lightboxTitle) lightboxTitle.textContent = image.alt || "Bildansicht";
     dialog.showModal();
@@ -194,6 +172,19 @@
     });
   }
 
+  function validRanges(ranges) {
+    return Array.isArray(ranges) && ranges.length > 0 && ranges.every((range) =>
+      Array.isArray(range) && range.length === 2 && Number.isInteger(range[0]) &&
+      Number.isInteger(range[1]) && range[0] > 0 && range[1] >= range[0]
+    );
+  }
+
+  function expandGalleryIndexes(gallery) {
+    return gallery.ranges.flatMap(([start, end]) =>
+      Array.from({ length: end - start + 1 }, (_, offset) => start + offset)
+    );
+  }
+
   async function loadGalleryManifest() {
     const response = await fetch(GALLERY_MANIFEST_URL, { cache: "force-cache" });
     if (!response.ok) throw new Error(`Galerie-Manifest konnte nicht geladen werden (${response.status})`);
@@ -201,15 +192,15 @@
     if (!data || !Array.isArray(data.galleries)) throw new Error("Ungültiges Galerie-Manifest");
     return data.galleries.filter((gallery) =>
       gallery && typeof gallery.id === "string" && typeof gallery.title === "string" &&
-      Number.isInteger(gallery.count) && gallery.count > 0 &&
-      typeof gallery.pattern === "string" && gallery.pattern.includes("{}")
+      typeof gallery.pattern === "string" && gallery.pattern.includes("{}") &&
+      typeof gallery.thumbnailPattern === "string" && gallery.thumbnailPattern.includes("{}") &&
+      validRanges(gallery.ranges)
     );
   }
 
   async function initGalleryLinks() {
     const wrap = $("#gallery-links");
     if (!wrap) return;
-
     try {
       const galleries = await loadGalleryManifest();
       const fragment = document.createDocumentFragment();
@@ -235,8 +226,7 @@
     const moreButton = $("#gallery-more");
     if (!grid || !title || !description) return;
 
-    const params = new URLSearchParams(location.search);
-    const galleryId = params.get("g");
+    const galleryId = new URLSearchParams(location.search).get("g");
     if (!galleryId) {
       title.textContent = "Galerie";
       description.textContent = "Bitte wähle auf der Startseite eine Galerie aus.";
@@ -249,43 +239,42 @@
       const gallery = galleries.find((entry) => entry.id === galleryId);
       if (!gallery) throw new Error("Unbekannte Galerie");
 
+      const indexes = expandGalleryIndexes(gallery);
       title.textContent = gallery.title;
-      description.textContent = `${gallery.count} Bilder · Bilder werden beim Blättern schrittweise geladen.`;
+      description.textContent = `${indexes.length} Bilder · Weitere Bilder werden bei Bedarf nachgeladen.`;
       document.title = `${gallery.title} – Sabines Herzküche`;
 
-      const sources = Array.from({ length: gallery.count }, (_, index) => {
-        const number = index + 1;
-        return `assets/img/galeries/${encodeURIComponent(gallery.id)}/${gallery.pattern.replace("{}", String(number))}`;
-      });
+      const images = indexes.map((number) => ({
+        full: `assets/img/galeries/${encodeURIComponent(gallery.id)}/${gallery.pattern.replace("{}", String(number))}`,
+        thumbnail: `assets/img/galeries/thumbs/${encodeURIComponent(gallery.id)}/${gallery.thumbnailPattern.replace("{}", String(number))}`,
+      }));
 
       let rendered = 0;
       const renderNextBatch = () => {
-        const end = Math.min(rendered + GALLERY_BATCH_SIZE, sources.length);
+        const end = Math.min(rendered + GALLERY_BATCH_SIZE, images.length);
         const fragment = document.createDocumentFragment();
-
         for (let index = rendered; index < end; index += 1) {
           const button = document.createElement("button");
           button.type = "button";
           button.setAttribute("aria-label", `${gallery.title}: Bild ${index + 1} groß anzeigen`);
-
           const image = document.createElement("img");
-          image.src = sources[index];
+          image.src = images[index].thumbnail;
+          image.dataset.fullSrc = images[index].full;
           image.alt = `${gallery.title} – Bild ${index + 1}`;
           image.loading = "lazy";
           image.decoding = "async";
-          image.width = 640;
-          image.height = 480;
+          image.width = 720;
+          image.height = 540;
           button.appendChild(image);
           button.addEventListener("click", () => openLightbox(image));
           fragment.appendChild(button);
         }
-
         grid.appendChild(fragment);
         rendered = end;
-        if (moreWrap) moreWrap.hidden = rendered >= sources.length;
-        if (moreButton) moreButton.textContent = rendered >= sources.length
+        if (moreWrap) moreWrap.hidden = rendered >= images.length;
+        if (moreButton) moreButton.textContent = rendered >= images.length
           ? "Alle Bilder geladen"
-          : `Mehr Bilder laden (${sources.length - rendered} übrig)`;
+          : `Mehr Bilder laden (${images.length - rendered} übrig)`;
       };
 
       moreButton?.addEventListener("click", renderNextBatch);
