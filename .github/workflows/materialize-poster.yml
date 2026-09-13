@@ -27,14 +27,12 @@ jobs:
           test "$(wc -c < assets/img/events/supperclub-2027-01-16.jpg)" -gt 20000
           test "$(head -c 2 assets/img/events/supperclub-2027-01-16.jpg | xxd -p)" = "ffd8"
           test "$(sha256sum assets/img/events/supperclub-2027-01-16.jpg | awk '{print $1}')" = "2d89dd49902abb63ee74890aef200182ba38e3b7b8719704cddfa52912753fde"
-      - name: Commit poster and remove staging files
+      - name: Commit poster only
         shell: bash
         run: |
           set -euo pipefail
-          rm assets/img/events/poster.b64.part* assets/img/events/poster.b64.ready
-          rm .github/workflows/materialize-poster.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
+          git add assets/img/events/supperclub-2027-01-16.jpg
           git commit -m "feat: add optimized Supperclub poster"
           git push origin HEAD:agent/supperclub-site-optimization
