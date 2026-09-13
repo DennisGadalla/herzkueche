@@ -7,6 +7,83 @@
   <meta name="robots" content="noindex" />
   <link rel="icon" href="assets/img/logo/logo.png" type="image/png" />
   <link rel="stylesheet" href="assets/css/style.css" />
+  <style>
+    /* Gallery-page geometry: fixed thumbnail frames prevent portrait images from stretching the grid. */
+    .galerie-grid button { aspect-ratio: 4 / 3; }
+    .galerie-grid img { height: 100%; aspect-ratio: auto; }
+
+    @media (max-width: 620px) {
+      .gallery-page-section { padding-block: 24px 36px; }
+      .gallery-page-section .container { padding-inline: 8px; }
+      .gallery-page-card {
+        min-height: 0;
+        padding: 18px 12px 20px;
+        border-radius: 16px;
+        box-shadow: var(--shadow-sm);
+      }
+      .gallery-head {
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 10px;
+      }
+      .gallery-head > div:first-child { min-width: 0; }
+      .gallery-head h1 { font-size: clamp(1.8rem, 9vw, 2.25rem); }
+      .gallery-actions .btn {
+        min-height: 44px;
+        padding: 8px 12px;
+      }
+      .gallery-meta {
+        margin-bottom: 14px;
+        font-size: .88rem;
+        line-height: 1.45;
+      }
+      .galerie-grid { gap: 6px; }
+      .galerie-grid button {
+        aspect-ratio: 1;
+        border-radius: 8px;
+      }
+      .galerie-grid img {
+        height: 100%;
+        aspect-ratio: auto;
+      }
+      .gallery-more-wrap { margin-top: 16px; }
+      #gallery-more { width: 100%; }
+
+      .lightbox-dialog {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        max-width: none;
+        height: 100dvh;
+        max-height: none;
+        margin: 0;
+        border: 0;
+        border-radius: 0;
+      }
+      .lightbox-dialog-inner {
+        height: 100dvh;
+        max-height: none;
+      }
+      .lightbox-dialog-head {
+        min-height: 56px;
+        padding: 6px 8px 6px 14px;
+        background: var(--surface);
+      }
+      .lightbox-dialog-close {
+        width: 44px;
+        height: 44px;
+        flex-basis: 44px;
+      }
+      .lightbox-dialog img {
+        width: 100%;
+        height: calc(100dvh - 56px);
+        max-height: none;
+        object-fit: contain;
+        background: #1f1815;
+      }
+    }
+  </style>
 </head>
 <body>
   <header>
@@ -24,7 +101,7 @@
   </header>
 
   <main>
-    <section aria-labelledby="galerie-title">
+    <section class="gallery-page-section" aria-labelledby="galerie-title">
       <div class="container">
         <div class="card gallery-page-card">
           <span class="tag">Impressionen</span>

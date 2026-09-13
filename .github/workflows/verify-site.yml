@@ -45,6 +45,7 @@ jobs:
           trap 'kill $SERVER_PID' EXIT
           node tests/visual_audit.js
           node tests/contact_form_audit.js
+          node tests/mobile_gallery_audit.js
 
       - name: Upload visual audit screenshots
         if: always()
