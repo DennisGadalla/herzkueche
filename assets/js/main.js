@@ -5,6 +5,8 @@
   const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
   const GALLERY_BATCH_SIZE = 12;
   const GALLERY_MANIFEST_URL = "assets/img/galeries/galleries.json";
+  const POSTER_SOURCE_URL = "assets/img/events/poster-source.txt";
+  let posterReadyPromise = Promise.resolve();
 
   function setFooterYear() {
     $$("#year").forEach((node) => {
@@ -98,6 +100,41 @@
     }
   }
 
+  async function initHighResolutionPoster() {
+    const poster = $(".event-poster");
+    const posterLink = $("[data-poster-open]");
+    const dialogPoster = $("#poster-dialog img");
+    if (!poster || !posterLink) return;
+
+    try {
+      const response = await fetch(POSTER_SOURCE_URL, { cache: "force-cache" });
+      if (!response.ok) throw new Error(`Poster source HTTP ${response.status}`);
+      const base64 = (await response.text()).trim();
+      if (!base64.startsWith("/9j/") || base64.length < 500000) {
+        throw new Error("Poster source failed quality sanity check");
+      }
+
+      const dataUrl = `data:image/jpeg;base64,${base64}`;
+      const dimensions = await new Promise((resolve, reject) => {
+        const probe = new Image();
+        probe.onload = () => resolve({ width: probe.naturalWidth, height: probe.naturalHeight });
+        probe.onerror = () => reject(new Error("High-resolution poster could not be decoded"));
+        probe.src = dataUrl;
+      });
+      if (dimensions.width < 1000 || dimensions.height < 1500) {
+        throw new Error(`Poster source too small: ${dimensions.width}x${dimensions.height}`);
+      }
+
+      poster.src = dataUrl;
+      poster.dataset.fullSrc = dataUrl;
+      poster.dataset.posterQuality = "hires";
+      posterLink.href = dataUrl;
+      if (dialogPoster) dialogPoster.src = dataUrl;
+    } catch (error) {
+      console.error("High-resolution event poster unavailable", error);
+    }
+  }
+
   function initEventInquiry() {
     const eventButton = $("[data-event-inquiry]");
     const card = eventButton?.closest("[data-event-card]");
@@ -120,10 +157,9 @@
         message.value = [
           "Hallo Sabine,",
           "",
-          `ich möchte gerne für das Supperclub Dinner${dateLabel ? ` am ${dateLabel}` : ""} anfragen.`,
+          `ich interessiere mich für das Supperclub Dinner${dateLabel ? ` am ${dateLabel}` : ""} und möchte gerne Plätze anfragen.`,
           "",
           "Personenzahl: ",
-          "Unverträglichkeiten / Wünsche (optional): ",
           "",
           "Liebe Grüße",
         ].join("\n");
@@ -148,8 +184,9 @@
     const closeButton = $("[data-poster-close]");
     if (!posterLink || !dialog || typeof dialog.showModal !== "function") return;
 
-    posterLink.addEventListener("click", (event) => {
+    posterLink.addEventListener("click", async (event) => {
       event.preventDefault();
+      await posterReadyPromise;
       dialog.showModal();
     });
     closeButton?.addEventListener("click", () => dialog.close());
@@ -328,6 +365,7 @@
 
   setFooterYear();
   initEventLifecycle();
+  posterReadyPromise = initHighResolutionPoster();
   initEventInquiry();
   initContactJumps();
   initContactSubject();
