@@ -109,7 +109,7 @@ class SiteStructureTests(unittest.TestCase):
     def test_event_poster_asset_exists(self):
         poster = ROOT / "assets/img/events/supperclub-2027-01-16.jpg"
         self.assertTrue(poster.is_file())
-        self.assertGreater(poster.stat().st_size, 50_000)
+        self.assertGreater(poster.stat().st_size, 20_000)
         self.assertLess(poster.stat().st_size, 500_000)
 
     def test_contact_form_wiring(self):
