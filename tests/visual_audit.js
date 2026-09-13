@@ -14,21 +14,15 @@ const routes = [
   ["gallery-dining", "/galerie.html?g=Dining&t=Dining"],
   ["impressum", "/impressum.html"],
 ];
-
 const viewports = [
   ["desktop", { width: 1440, height: 1000 }],
   ["tablet", { width: 820, height: 1000 }],
   ["mobile", { width: 390, height: 844 }],
 ];
-
 const EXPECTED_EVENT_MESSAGE = [
-  "Hallo Sabine,",
-  "",
+  "Hallo Sabine,", "",
   "ich interessiere mich für das Supperclub Dinner am 16.01.2027 und möchte gerne Plätze anfragen.",
-  "",
-  "Personenzahl: ",
-  "",
-  "Liebe Grüße",
+  "", "Personenzahl: ", "", "Liebe Grüße",
 ].join("\n");
 
 async function activateWholePage(page) {
@@ -38,13 +32,13 @@ async function activateWholePage(page) {
     let max = Math.max(0, document.documentElement.scrollHeight - innerHeight);
     for (let y = 0; y <= max; y += step) {
       scrollTo(0, y);
-      await wait(40);
+      await wait(35);
       max = Math.max(max, document.documentElement.scrollHeight - innerHeight);
     }
     scrollTo(0, max);
-    await wait(90);
+    await wait(80);
     scrollTo(0, 0);
-    await wait(90);
+    await wait(80);
   });
 }
 
@@ -59,31 +53,6 @@ async function settle(page) {
     }));
   });
   await page.waitForTimeout(100);
-}
-
-async function pageHealth(page) {
-  return page.evaluate(() => {
-    const root = document.documentElement;
-    const visible = (node) => {
-      const style = getComputedStyle(node);
-      const rect = node.getBoundingClientRect();
-      return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
-    };
-    const brokenImages = [...document.images]
-      .filter((image) => visible(image) && image.complete && image.naturalWidth === 0)
-      .map((image) => image.getAttribute("src"));
-    const smallControls = [...document.querySelectorAll("button, .btn")]
-      .filter(visible)
-      .map((node) => ({ text: (node.textContent || "").trim(), height: node.getBoundingClientRect().height }))
-      .filter((item) => item.height < 40);
-    return {
-      innerWidth,
-      scrollWidth: root.scrollWidth,
-      brokenImages,
-      smallControls,
-      height: root.scrollHeight,
-    };
-  });
 }
 
 async function stableGeometry(page, waits = [650]) {
@@ -105,107 +74,123 @@ async function stableGeometry(page, waits = [650]) {
   for (const wait of waits) {
     await page.waitForTimeout(wait);
     const current = await sample();
-    const pageDelta = Math.abs(current.documentHeight - first.documentHeight);
-    assert.ok(pageDelta <= 1.5, `document height kept changing by ${pageDelta.toFixed(2)}px`);
+    assert.ok(Math.abs(current.documentHeight - first.documentHeight) <= 1.5,
+      `document height kept changing: ${first.documentHeight} -> ${current.documentHeight}`);
     for (const selector of selectors) {
       if (!first.geometry[selector] || !current.geometry[selector]) continue;
       for (const key of ["left", "top", "width", "height"]) {
         const delta = Math.abs(first.geometry[selector][key] - current.geometry[selector][key]);
-        assert.ok(delta <= 1.5, `${selector}: ${key} drifted by ${delta.toFixed(2)}px after load`);
+        assert.ok(delta <= 1.5, `${selector}: ${key} drifted by ${delta.toFixed(2)}px`);
       }
     }
   }
 }
 
-async function assertSectionAlignment(page, label) {
+async function assertHealth(page, label) {
+  const result = await page.evaluate(() => {
+    const visible = (node) => {
+      const rect = node.getBoundingClientRect();
+      const style = getComputedStyle(node);
+      return rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden";
+    };
+    return {
+      innerWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+      broken: [...document.images]
+        .filter((image) => visible(image) && image.complete && image.naturalWidth === 0)
+        .map((image) => image.getAttribute("src")),
+      small: [...document.querySelectorAll("button, .btn")]
+        .filter(visible)
+        .map((node) => ({ text: node.textContent.trim(), height: node.getBoundingClientRect().height }))
+        .filter((item) => item.height < 40),
+    };
+  });
+  assert.ok(result.scrollWidth <= result.innerWidth + 1,
+    `${label}: horizontal overflow ${result.scrollWidth}px > ${result.innerWidth}px`);
+  assert.deepEqual(result.broken, [], `${label}: broken visible images`);
+  assert.deepEqual(result.small, [], `${label}: undersized controls`);
+}
+
+async function assertHome(page, viewportName) {
+  await page.waitForFunction(() => document.querySelector(".event-poster")?.dataset.posterQuality === "hires", null, { timeout: 5000 });
+  for (const selector of ["#about", "#angebot", "#supperclub", "#impressionen", "#kontakt"]) {
+    assert.equal(await page.locator(selector).isVisible(), true, `home/${viewportName}: ${selector}`);
+  }
+
+  const poster = await page.locator(".event-poster").evaluate((image) => ({
+    width: image.naturalWidth,
+    height: image.naturalHeight,
+    src: image.currentSrc || image.src,
+    quality: image.dataset.posterQuality,
+  }));
+  assert.equal(poster.quality, "hires", `home/${viewportName}: poster quality marker`);
+  assert.ok(poster.width >= 1000 && poster.height >= 1500,
+    `home/${viewportName}: poster only ${poster.width}x${poster.height}`);
+  assert.ok(poster.src.includes("supperclub-2027-01-16-hires.avif"), `home/${viewportName}: wrong poster source`);
+
+  const assetBytes = await page.evaluate(async () => {
+    const response = await fetch("assets/img/events/supperclub-2027-01-16-hires.avif", { cache: "no-store" });
+    if (!response.ok) throw new Error(`poster asset HTTP ${response.status}`);
+    return (await response.arrayBuffer()).byteLength;
+  });
+  assert.ok(assetBytes >= 10000, `home/${viewportName}: high-resolution poster asset unexpectedly small`);
+
   const rows = await page.evaluate(() => [...document.querySelectorAll("main > section:not([hidden]) > .container")]
     .filter((node) => getComputedStyle(node).display !== "none")
     .map((node) => {
       const rect = node.getBoundingClientRect();
       return { left: rect.left, width: rect.width };
     }));
-  assert.ok(rows.length >= 5, `${label}: expected aligned main section containers`);
-  const lefts = rows.map((row) => row.left);
-  const widths = rows.map((row) => row.width);
-  assert.ok(Math.max(...lefts) - Math.min(...lefts) <= 1.5, `${label}: section left edges drift`);
-  assert.ok(Math.max(...widths) - Math.min(...widths) <= 1.5, `${label}: section widths drift`);
+  assert.ok(rows.length >= 5, `home/${viewportName}: aligned section containers missing`);
+  assert.ok(Math.max(...rows.map((x) => x.left)) - Math.min(...rows.map((x) => x.left)) <= 1.5,
+    `home/${viewportName}: section left edges drift`);
+  assert.ok(Math.max(...rows.map((x) => x.width)) - Math.min(...rows.map((x) => x.width)) <= 1.5,
+    `home/${viewportName}: section widths drift`);
+
+  const contactHeights = await page.evaluate(() =>
+    [...document.querySelectorAll("#contact-form input:not([type=hidden]), #contact-form select")]
+      .map((node) => node.getBoundingClientRect().height));
+  assert.ok(contactHeights.length >= 4 && contactHeights.every((height) => height >= 44),
+    `home/${viewportName}: contact controls too small`);
+
+  if (viewportName === "desktop") {
+    const widths = await page.evaluate(() =>
+      [...document.querySelectorAll(".event-facts > div")].map((node) => node.getBoundingClientRect().width));
+    assert.equal(widths.length, 3);
+    assert.ok(Math.max(...widths) - Math.min(...widths) < 2, "home/desktop: event facts unequal");
+  }
 }
 
 async function auditRoute(browser, routeName, route, viewportName, viewport) {
   const context = await browser.newContext({ viewport });
   const page = await context.newPage();
   const errors = [];
-  const failedRequests = [];
-
+  const failed = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  page.on("console", (message) => {
-    if (message.type() === "error") errors.push(message.text());
-  });
-  page.on("requestfailed", (request) => failedRequests.push(`${request.method()} ${request.url()}`));
+  page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
+  page.on("requestfailed", (request) => failed.push(`${request.method()} ${request.url()}`));
 
   const response = await page.goto(`${BASE}${route}`, { waitUntil: "domcontentloaded" });
-  assert.ok(response && response.ok(), `${routeName}/${viewportName}: HTTP load failed`);
+  assert.ok(response?.ok(), `${routeName}/${viewportName}: HTTP load failed`);
   await settle(page);
-
-  if (routeName === "home") {
-    await page.waitForFunction(() => document.querySelector(".event-poster")?.dataset.posterQuality === "hires", null, { timeout: 5000 });
-  }
-
-  const health = await pageHealth(page);
-  assert.ok(health.scrollWidth <= health.innerWidth + 1,
-    `${routeName}/${viewportName}: horizontal overflow ${health.scrollWidth}px > ${health.innerWidth}px`);
-  assert.deepEqual(health.brokenImages, [], `${routeName}/${viewportName}: broken visible images`);
-  assert.deepEqual(health.smallControls, [], `${routeName}/${viewportName}: undersized controls`);
+  if (routeName === "home") await assertHome(page, viewportName);
+  await assertHealth(page, `${routeName}/${viewportName}`);
   assert.deepEqual(errors, [], `${routeName}/${viewportName}: browser errors: ${errors.join(" | ")}`);
-  assert.deepEqual(failedRequests, [], `${routeName}/${viewportName}: failed requests: ${failedRequests.join(" | ")}`);
+  assert.deepEqual(failed, [], `${routeName}/${viewportName}: failed requests: ${failed.join(" | ")}`);
   await stableGeometry(page, routeName === "home" ? [600, 900, 1200] : [650]);
 
-  if (routeName === "home") {
-    await assertSectionAlignment(page, `home/${viewportName}`);
-    const contactHeights = await page.evaluate(() =>
-      [...document.querySelectorAll("#contact-form input:not([type=hidden]), #contact-form select")]
-        .map((node) => node.getBoundingClientRect().height));
-    assert.ok(contactHeights.length >= 4, "home: expected contact controls");
-    assert.ok(contactHeights.every((height) => height >= 44), "home: contact controls must be at least 44px high");
-    for (const selector of ["#about", "#angebot", "#supperclub", "#impressionen", "#kontakt"]) {
-      assert.equal(await page.locator(selector).isVisible(), true, `home: ${selector} must render`);
-    }
-
-    const poster = await page.locator(".event-poster").evaluate((image) => ({
-      naturalWidth: image.naturalWidth,
-      naturalHeight: image.naturalHeight,
-      quality: image.dataset.posterQuality,
-    }));
-    assert.equal(poster.quality, "hires", `home/${viewportName}: high-resolution poster was not activated`);
-    assert.ok(poster.naturalWidth >= 1000 && poster.naturalHeight >= 1500,
-      `home/${viewportName}: event poster source is too low resolution (${poster.naturalWidth}x${poster.naturalHeight})`);
-    const sourceLength = await page.evaluate(async () => {
-      const response = await fetch("assets/img/events/poster-source.txt", { cache: "no-store" });
-      return (await response.text()).trim().length;
-    });
-    assert.ok(sourceLength >= 500000, `home/${viewportName}: high-resolution poster payload is unexpectedly small`);
-
-    if (viewportName === "desktop") {
-      const eventWidths = await page.evaluate(() =>
-        [...document.querySelectorAll(".event-facts > div")].map((node) => node.getBoundingClientRect().width));
-      assert.equal(eventWidths.length, 3, "home: three event fact cards expected");
-      assert.ok(Math.max(...eventWidths) - Math.min(...eventWidths) < 2, "home: event fact cards must have equal widths");
-    }
-  }
-
   if (routeName.startsWith("gallery-")) {
-    const count = await page.locator("#galerie-grid button").count();
-    assert.equal(count, 12, `${routeName}: only the first 12 thumbnails should render initially`);
-    assert.ok(await page.locator("#gallery-more-wrap").isVisible(), `${routeName}: load-more control should be visible`);
+    assert.equal(await page.locator("#galerie-grid button").count(), 12, `${routeName}: first batch`);
+    assert.equal(await page.locator("#gallery-more-wrap").isVisible(), true, `${routeName}: load more`);
   }
 
   const screenshot = path.join(OUT, `${routeName}-${viewportName}.png`);
   await page.screenshot({ path: screenshot, fullPage: true });
   await context.close();
-  return { routeName, viewportName, screenshot, health };
+  return { routeName, viewportName, screenshot };
 }
 
-async function auditInquiryInteraction(browser, viewportName, viewport) {
+async function auditInquiry(browser, viewportName, viewport) {
   const context = await browser.newContext({ viewport, reducedMotion: "reduce" });
   const page = await context.newPage();
   await page.goto(`${BASE}/index.html`, { waitUntil: "domcontentloaded" });
@@ -214,30 +199,27 @@ async function auditInquiryInteraction(browser, viewportName, viewport) {
 
   await page.locator("[data-event-inquiry]").click();
   await page.waitForTimeout(300);
+  assert.equal(await page.locator("#topic").inputValue(), "Supperclub 16.01.2027", `${viewportName}: topic`);
+  assert.equal(await page.locator("#contact-subject").inputValue(), "Supperclub 16.01.2027 – Platzanfrage", `${viewportName}: subject`);
+  assert.equal(await page.locator("#message").inputValue(), EXPECTED_EVENT_MESSAGE, `${viewportName}: message`);
+  assert.equal(new URL(page.url()).hash, "#kontakt", `${viewportName}: hash`);
 
-  assert.equal(await page.locator("#topic").inputValue(), "Supperclub 16.01.2027", `${viewportName}: topic prefill`);
-  assert.equal(await page.locator("#contact-subject").inputValue(), "Supperclub 16.01.2027 – Platzanfrage", `${viewportName}: subject prefill`);
-  assert.equal(await page.locator("#message").inputValue(), EXPECTED_EVENT_MESSAGE, `${viewportName}: message prefill`);
-  assert.equal(new URL(page.url()).hash, "#kontakt", `${viewportName}: inquiry CTA should set #kontakt`);
-
-  const position = await page.evaluate(() => {
+  const pos = await page.evaluate(() => {
     const form = document.querySelector("#contact-form").getBoundingClientRect();
     const header = document.querySelector("header").getBoundingClientRect();
-    return { formTop: form.top, headerBottom: header.bottom, viewportHeight: innerHeight, active: document.activeElement?.id || "" };
+    return { formTop: form.top, headerBottom: header.bottom, viewportHeight: innerHeight, active: document.activeElement?.id };
   });
-  assert.ok(position.formTop >= position.headerBottom + 8,
-    `${viewportName}: contact form is hidden under sticky header (${position.formTop} < ${position.headerBottom})`);
-  assert.ok(position.formTop < Math.min(position.viewportHeight * 0.42, position.headerBottom + 140),
-    `${viewportName}: inquiry jump did not land on the form (${position.formTop}px)`);
-  assert.equal(position.active, "name", `${viewportName}: inquiry jump should focus the name field`);
+  assert.ok(pos.formTop >= pos.headerBottom + 8, `${viewportName}: form hidden below header`);
+  assert.ok(pos.formTop < Math.min(pos.viewportHeight * 0.42, pos.headerBottom + 140), `${viewportName}: jump missed form`);
+  assert.equal(pos.active, "name", `${viewportName}: name field not focused`);
 
   await page.locator("[data-poster-open]").click();
-  assert.equal(await page.locator("#poster-dialog").evaluate((dialog) => dialog.open), true, `${viewportName}: poster dialog opens`);
+  assert.equal(await page.locator("#poster-dialog").evaluate((dialog) => dialog.open), true);
   const dialogPoster = await page.locator("#poster-dialog img").evaluate((image) => ({ w: image.naturalWidth, h: image.naturalHeight }));
-  assert.ok(dialogPoster.w >= 1000 && dialogPoster.h >= 1500, `${viewportName}: enlarged poster must stay sharp`);
+  assert.ok(dialogPoster.w >= 1000 && dialogPoster.h >= 1500, `${viewportName}: enlarged poster is not high resolution`);
+  await page.locator("[data-poster-close]").click();
 
   const screenshot = path.join(OUT, `home-inquiry-${viewportName}.png`);
-  await page.locator("[data-poster-close]").click();
   await page.screenshot({ path: screenshot, fullPage: true });
   await context.close();
   return { routeName: "home-inquiry", viewportName, screenshot };
@@ -257,16 +239,14 @@ async function auditExpiredEvent(browser) {
     MockDate.UTC = NativeDate.UTC;
     window.Date = MockDate;
   }, now);
-
   await page.goto(`${BASE}/index.html`, { waitUntil: "domcontentloaded" });
   await settle(page);
-  assert.equal(await page.locator("#supperclub").isVisible(), false, "expired current-event section should be hidden");
-  assert.equal(await page.locator("#vergangene-veranstaltungen").isVisible(), true, "past-events section should be visible");
-  assert.equal(await page.locator("#past-events-list [data-event-card]").count(), 1, "expired event should move into archive");
-  assert.equal(await page.locator("#past-events-list [data-event-inquiry]").count(), 0, "expired event must not keep booking CTA");
-  assert.equal(await page.locator('#topic option[value="Supperclub 16.01.2027"]').count(), 0, "expired event must leave contact options");
+  assert.equal(await page.locator("#supperclub").isVisible(), false);
+  assert.equal(await page.locator("#vergangene-veranstaltungen").isVisible(), true);
+  assert.equal(await page.locator("#past-events-list [data-event-card]").count(), 1);
+  assert.equal(await page.locator("#past-events-list [data-event-inquiry]").count(), 0);
+  assert.equal(await page.locator('#topic option[value="Supperclub 16.01.2027"]').count(), 0);
   assert.equal(await page.locator("[data-event-nav]").getAttribute("href"), "#vergangene-veranstaltungen");
-
   const screenshot = path.join(OUT, "home-expired-event-desktop.png");
   await page.screenshot({ path: screenshot, fullPage: true });
   await context.close();
@@ -282,15 +262,14 @@ async function auditExpiredEvent(browser) {
         report.push(await auditRoute(browser, routeName, route, viewportName, viewport));
       }
     }
-    report.push(await auditInquiryInteraction(browser, "desktop", viewports[0][1]));
-    report.push(await auditInquiryInteraction(browser, "mobile", viewports[2][1]));
+    report.push(await auditInquiry(browser, "desktop", viewports[0][1]));
+    report.push(await auditInquiry(browser, "mobile", viewports[2][1]));
     report.push(await auditExpiredEvent(browser));
   } finally {
     await browser.close();
   }
-
   fs.writeFileSync(path.join(OUT, "report.json"), JSON.stringify(report, null, 2));
-  console.log(`Visual audit PASS: ${report.length} states checked, including sustained layout stability and inquiry interactions`);
+  console.log(`Visual audit PASS: ${report.length} states checked`);
 })().catch((error) => {
   console.error(error.stack || error);
   process.exitCode = 1;
