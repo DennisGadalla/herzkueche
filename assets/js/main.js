@@ -249,6 +249,11 @@
         thumbnail: `assets/img/galeries/thumbs/${encodeURIComponent(gallery.id)}/${gallery.thumbnailPattern.replace("{}", String(number))}`,
       }));
 
+      grid.addEventListener("click", (event) => {
+        const image = event.target.closest("button")?.querySelector("img");
+        if (image) openLightbox(image);
+      });
+
       let rendered = 0;
       const renderNextBatch = () => {
         const end = Math.min(rendered + GALLERY_BATCH_SIZE, images.length);
@@ -266,7 +271,6 @@
           image.width = 720;
           image.height = 540;
           button.appendChild(image);
-          button.addEventListener("click", () => openLightbox(image));
           fragment.appendChild(button);
         }
         grid.appendChild(fragment);
