@@ -79,6 +79,13 @@ def find(parser, tag, **expected):
     return matches
 
 
+def expand_ranges(ranges):
+    numbers = []
+    for start, end in ranges:
+        numbers.extend(range(start, end + 1))
+    return numbers
+
+
 class SiteStructureTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -193,17 +200,36 @@ class SiteStructureTests(unittest.TestCase):
         self.assertEqual(len(find(self.index_parser, "select", id="topic", name="anliegen")), 1)
         self.assertEqual(len(find(self.index_parser, "a", href="tel:+491723614800")), 1)
 
-    def test_gallery_manifest_is_deterministic(self):
+    def test_gallery_manifest_lists_only_real_images(self):
         manifest = json.loads((ROOT / "assets/img/galeries/galleries.json").read_text(encoding="utf-8"))
         rows = manifest["galleries"]
-        self.assertEqual({row["id"] for row in rows}, {"Buffets", "Herzkueche", "Dining"})
+        expected_counts = {"Buffets": 62, "Herzkueche": 46, "Dining": 38}
+        self.assertEqual({row["id"] for row in rows}, set(expected_counts))
+
         for row in rows:
             self.assertEqual(row["pattern"], "img-{}.jpg")
-            self.assertGreater(row["count"], 0)
-            first = ROOT / "assets/img/galeries" / row["id"] / "img-1.jpg"
-            last = ROOT / "assets/img/galeries" / row["id"] / f"img-{row['count']}.jpg"
-            self.assertTrue(first.is_file(), str(first))
-            self.assertTrue(last.is_file(), str(last))
+            self.assertEqual(row["thumbnailPattern"], "img-{}.webp")
+            numbers = expand_ranges(row["ranges"])
+            self.assertEqual(len(numbers), expected_counts[row["id"]])
+            self.assertEqual(len(numbers), len(set(numbers)))
+            for number in numbers:
+                source = ROOT / "assets/img/galeries" / row["id"] / f"img-{number}.jpg"
+                self.assertTrue(source.is_file(), str(source))
+
+        dining = next(row for row in rows if row["id"] == "Dining")
+        dining_numbers = set(expand_ranges(dining["ranges"]))
+        self.assertTrue(set(range(23, 33)).isdisjoint(dining_numbers))
+
+    def test_gallery_thumbnails_exist_and_are_lightweight(self):
+        manifest = json.loads((ROOT / "assets/img/galeries/galleries.json").read_text(encoding="utf-8"))
+        checked = 0
+        for row in manifest["galleries"]:
+            for number in expand_ranges(row["ranges"]):
+                thumb = ROOT / "assets/img/galeries/thumbs" / row["id"] / f"img-{number}.webp"
+                self.assertTrue(thumb.is_file(), str(thumb))
+                self.assertLess(thumb.stat().st_size, 250_000, str(thumb))
+                checked += 1
+        self.assertEqual(checked, 146)
 
     def test_javascript_has_no_runtime_file_probing_or_localstorage_cache(self):
         forbidden = [
@@ -213,6 +239,7 @@ class SiteStructureTests(unittest.TestCase):
         for token in forbidden:
             self.assertNotIn(token, self.js)
         self.assertIn("GALLERY_BATCH_SIZE", self.js)
+        self.assertIn("thumbnailPattern", self.js)
         self.assertIn("data-event-end", self.js)
         self.assertIn("past-events-list", self.js)
 
