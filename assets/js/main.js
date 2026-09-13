@@ -12,20 +12,47 @@
     });
   }
 
-  function syncHeaderHeight() {
-    const header = $("header");
-    if (!header) return;
-    const update = () => document.documentElement.style.setProperty("--header-h", `${header.offsetHeight}px`);
-    update();
-    if ("ResizeObserver" in window) new ResizeObserver(update).observe(header);
-    else window.addEventListener("resize", update, { passive: true });
+  function prefersReducedMotion() {
+    return Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
+  }
+
+  function scrollTargetIntoView(target, { focus = null, hash = "" } = {}) {
+    if (!target) return;
+    const headerHeight = $("header")?.getBoundingClientRect().height || 0;
+    const top = Math.max(0, window.scrollY + target.getBoundingClientRect().top - headerHeight - 16);
+
+    if (hash && window.location.hash !== hash) {
+      window.history.replaceState(null, "", hash);
+    }
+
+    window.scrollTo({
+      top,
+      behavior: prefersReducedMotion() ? "auto" : "smooth",
+    });
+
+    if (focus) {
+      window.setTimeout(
+        () => focus.focus({ preventScroll: true }),
+        prefersReducedMotion() ? 0 : 420,
+      );
+    }
+  }
+
+  function initContactJumps() {
+    $$('.links a[href="#kontakt"], #angebot a[href="#kontakt"]').forEach((link) => {
+      if (link.hasAttribute("data-event-inquiry")) return;
+      link.addEventListener("click", (event) => {
+        event.preventDefault();
+        scrollTargetIntoView($("#kontakt"), { hash: "#kontakt" });
+      });
+    });
   }
 
   function getEventState(startIso, endIso, now = Date.now()) {
     const start = Date.parse(startIso || "");
     const end = Date.parse(endIso || "");
     if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return "invalid";
-    if (now > end) return "past";
+    if (now >= end) return "past";
     if (now >= start) return "live";
     return "upcoming";
   }
@@ -84,20 +111,25 @@
 
     const topicValue = card.getAttribute("data-event-topic") || "Supperclub";
     const dateLabel = card.getAttribute("data-event-date-label") || "";
-    eventButton.addEventListener("click", () => {
+
+    eventButton.addEventListener("click", (event) => {
+      event.preventDefault();
       if (findOption(topic, topicValue)) topic.value = topicValue;
       subject.value = `${topicValue} – Platzanfrage`;
+
       if (!message.value.trim()) {
         message.value = [
-          "Hallo Sabine,", "",
-          `ich interessiere mich für das Supperclub Dinner${dateLabel ? ` am ${dateLabel}` : ""}.`,
-          "Personenzahl: ", "", "Liebe Grüße"
+          "Hallo Sabine,",
+          "",
+          `ich interessiere mich für das Supperclub Dinner${dateLabel ? ` am ${dateLabel}` : ""} und möchte gerne Plätze anfragen.`,
+          "",
+          "Personenzahl: ",
+          "",
+          "Liebe Grüße",
         ].join("\n");
       }
-      window.setTimeout(() => {
-        form.scrollIntoView({ behavior: "smooth", block: "start" });
-        name?.focus({ preventScroll: true });
-      }, 80);
+
+      scrollTargetIntoView(form, { focus: name, hash: "#kontakt" });
     });
   }
 
@@ -112,11 +144,15 @@
 
   function initPosterDialog() {
     const posterLink = $("[data-poster-open]");
+    const poster = $(".event-poster");
     const dialog = $("#poster-dialog");
+    const dialogPoster = $("#poster-dialog img");
     const closeButton = $("[data-poster-close]");
-    if (!posterLink || !dialog || typeof dialog.showModal !== "function") return;
+    if (!posterLink || !poster || !dialog || typeof dialog.showModal !== "function") return;
+
     posterLink.addEventListener("click", (event) => {
       event.preventDefault();
+      if (dialogPoster) dialogPoster.src = poster.currentSrc || poster.src;
       dialog.showModal();
     });
     closeButton?.addEventListener("click", () => dialog.close());
@@ -276,9 +312,11 @@
         grid.appendChild(fragment);
         rendered = end;
         if (moreWrap) moreWrap.hidden = rendered >= images.length;
-        if (moreButton) moreButton.textContent = rendered >= images.length
-          ? "Alle Bilder geladen"
-          : `Mehr Bilder laden (${images.length - rendered} übrig)`;
+        if (moreButton) {
+          moreButton.textContent = rendered >= images.length
+            ? "Alle Bilder geladen"
+            : `Mehr Bilder laden (${images.length - rendered} übrig)`;
+        }
       };
 
       moreButton?.addEventListener("click", renderNextBatch);
@@ -292,9 +330,9 @@
   }
 
   setFooterYear();
-  syncHeaderHeight();
   initEventLifecycle();
   initEventInquiry();
+  initContactJumps();
   initContactSubject();
   initPosterDialog();
   initStaticImageLightboxes();
