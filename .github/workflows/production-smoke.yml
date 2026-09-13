@@ -1,0 +1,39 @@
+name: Production smoke
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Verify public pages and key assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://www.sabines-herzkueche.de"
+
+          home="$(curl --fail --silent --show-error --location "$BASE/")"
+          grep -q "Sabine Gadalla" <<<"$home"
+          grep -q "contact-form" <<<"$home"
+
+          privacy="$(curl --fail --silent --show-error --location "$BASE/datenschutz.html")"
+          grep -q "Datenschutzerklärung" <<<"$privacy"
+
+          legal="$(curl --fail --silent --show-error --location "$BASE/impressum.html")"
+          grep -q "Impressum" <<<"$legal"
+
+          gallery="$(curl --fail --silent --show-error --location "$BASE/galerie.html?g=Buffets")"
+          grep -q "galerie-grid" <<<"$gallery"
+
+          curl --fail --silent --show-error --location --output /dev/null "$BASE/assets/css/style.css"
+          curl --fail --silent --show-error --location --output /dev/null "$BASE/assets/js/main.js"
+          curl --fail --silent --show-error --location --output /dev/null "$BASE/assets/img/galeries/galleries.json"
+          curl --fail --silent --show-error --location --output /dev/null "$BASE/robots.txt"
+          curl --fail --silent --show-error --location --output /dev/null "$BASE/sitemap.xml"

@@ -3,6 +3,8 @@
     {
       "id": "Buffets",
       "title": "Buffets",
+      "description": "Vielfaeltige Buffets fuer unterschiedliche Anlaesse.",
+      "cover": 1,
       "pattern": "img-{}.jpg",
       "thumbnailPattern": "img-{}.webp",
       "ranges": [[1, 62]]
@@ -10,6 +12,8 @@
     {
       "id": "Herzkueche",
       "title": "Herzküche",
+      "description": "Gerichte und Eindruecke aus meiner Kueche.",
+      "cover": 7,
       "pattern": "img-{}.jpg",
       "thumbnailPattern": "img-{}.webp",
       "ranges": [[1, 46]]
@@ -17,6 +21,8 @@
     {
       "id": "Dining",
       "title": "Dining",
+      "description": "Menues und gedeckte Tische fuer besondere Abende.",
+      "cover": 33,
       "pattern": "img-{}.jpg",
       "thumbnailPattern": "img-{}.webp",
       "ranges": [[1, 22], [33, 48]]
