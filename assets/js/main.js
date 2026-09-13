@@ -106,23 +106,23 @@
     const dialogPoster = $("#poster-dialog img");
     if (!poster || !posterLink) return;
 
+    const fallbackSrc = poster.getAttribute("src") || "";
     try {
-      const dimensions = await new Promise((resolve, reject) => {
-        const probe = new Image();
-        probe.onload = () => resolve({ width: probe.naturalWidth, height: probe.naturalHeight });
-        probe.onerror = () => reject(new Error("High-resolution poster could not be decoded"));
-        probe.src = POSTER_HIRES_URL;
-      });
-      if (dimensions.width < 1000 || dimensions.height < 1500) {
-        throw new Error(`Poster source too small: ${dimensions.width}x${dimensions.height}`);
-      }
-
       poster.src = POSTER_HIRES_URL;
       poster.dataset.fullSrc = POSTER_HIRES_URL;
-      poster.dataset.posterQuality = "hires";
       posterLink.href = POSTER_HIRES_URL;
       if (dialogPoster) dialogPoster.src = POSTER_HIRES_URL;
+
+      if (poster.decode) await poster.decode();
+      if (poster.naturalWidth < 1000 || poster.naturalHeight < 1500) {
+        throw new Error(`Poster source too small: ${poster.naturalWidth}x${poster.naturalHeight}`);
+      }
+      poster.dataset.posterQuality = "hires";
     } catch (error) {
+      poster.src = fallbackSrc;
+      poster.dataset.fullSrc = fallbackSrc;
+      posterLink.href = fallbackSrc;
+      if (dialogPoster) dialogPoster.src = fallbackSrc;
       console.error("High-resolution event poster unavailable", error);
     }
   }
