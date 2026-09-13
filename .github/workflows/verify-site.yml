@@ -38,7 +38,7 @@ jobs:
           npx playwright install --with-deps chromium
 
       - name: Run browser regression audits
-        timeout-minutes: 6
+        timeout-minutes: 7
         run: |
           python -m http.server 4173 >/tmp/herzkueche-http.log 2>&1 &
           SERVER_PID=$!
@@ -46,6 +46,7 @@ jobs:
           node tests/visual_audit.js
           node tests/contact_form_audit.js
           node tests/mobile_gallery_audit.js
+          node tests/platform_audit.js
 
       - name: Upload visual audit screenshots
         if: always()
