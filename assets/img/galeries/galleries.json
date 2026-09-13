@@ -1,5 +1,7 @@
-{ "galleries": [
-  { "id": "Buffets",   "title": "Buffets",   "count": 62 },
-  { "id": "Herzkueche", "title": "Herzküche", "count": 46 },
-  { "id": "Dining", "title": "Dining", "count": 48 }
-]}
+{
+  "galleries": [
+    { "id": "Buffets", "title": "Buffets", "count": 62, "pattern": "img-{}.jpg" },
+    { "id": "Herzkueche", "title": "Herzküche", "count": 46, "pattern": "img-{}.jpg" },
+    { "id": "Dining", "title": "Dining", "count": 48, "pattern": "img-{}.jpg" }
+  ]
+}
