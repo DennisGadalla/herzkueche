@@ -20,15 +20,31 @@ const viewports = [
   ["mobile", { width: 390, height: 844 }],
 ];
 
-async function settle(page) {
-  await page.waitForTimeout(500);
+async function activateWholePage(page) {
+  // Mimic a real visitor moving through the page. This deliberately activates
+  // lazy images and content-visibility regions before screenshots are judged.
   await page.evaluate(async () => {
-    const visibleImages = [...document.images].filter((image) => {
-      const box = image.getBoundingClientRect();
-      return box.bottom >= 0 && box.top <= innerHeight * 2;
-    });
-    await Promise.all(visibleImages.map((image) => image.decode?.().catch(() => undefined)));
+    const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    const step = Math.max(280, Math.floor(innerHeight * 0.7));
+    const max = Math.max(0, document.documentElement.scrollHeight - innerHeight);
+    for (let y = 0; y <= max; y += step) {
+      scrollTo(0, y);
+      await wait(45);
+    }
+    scrollTo(0, max);
+    await wait(120);
+    scrollTo(0, 0);
+    await wait(120);
   });
+}
+
+async function settle(page) {
+  await page.waitForTimeout(250);
+  await activateWholePage(page);
+  await page.evaluate(async () => {
+    await Promise.all([...document.images].map((image) => image.decode?.().catch(() => undefined)));
+  });
+  await page.waitForTimeout(120);
 }
 
 async function pageHealth(page) {
@@ -51,6 +67,7 @@ async function pageHealth(page) {
       scrollWidth: root.scrollWidth,
       brokenImages,
       smallControls,
+      height: root.scrollHeight,
     };
   });
 }
@@ -88,6 +105,10 @@ async function auditRoute(browser, routeName, route, viewportName, viewport) {
     );
     assert.ok(contactHeights.length >= 4, "home: expected contact controls");
     assert.ok(contactHeights.every((height) => height >= 44), "home: contact controls must be at least 44px high");
+    assert.equal(await page.locator("#about").isVisible(), true, "home: about section must render");
+    assert.equal(await page.locator("#angebot").isVisible(), true, "home: offer section must render");
+    assert.equal(await page.locator("#impressionen").isVisible(), true, "home: gallery section must render");
+    assert.equal(await page.locator("#kontakt").isVisible(), true, "home: contact section must render");
 
     if (viewportName === "desktop") {
       const eventWidths = await page.evaluate(() =>
@@ -107,12 +128,12 @@ async function auditRoute(browser, routeName, route, viewportName, viewport) {
   const screenshot = path.join(OUT, `${routeName}-${viewportName}.png`);
   await page.screenshot({ path: screenshot, fullPage: true });
   await context.close();
-
   return { routeName, viewportName, screenshot, health };
 }
 
 async function auditExpiredEvent(browser) {
-  const now = Date.parse("2027-01-17T00:05:00+01:00");
+  // One millisecond after the configured end time: the current-event slot must be gone.
+  const now = Date.parse("2027-01-16T23:00:00.001+01:00");
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   const page = await context.newPage();
   await page.addInitScript((mockNow) => {
@@ -159,7 +180,7 @@ async function auditExpiredEvent(browser) {
   }
 
   fs.writeFileSync(path.join(OUT, "report.json"), JSON.stringify(report, null, 2));
-  console.log(`Visual audit PASS: ${report.length} states checked`);
+  console.log(`Visual audit PASS: ${report.length} states checked after real scroll activation`);
 })().catch((error) => {
   console.error(error.stack || error);
   process.exitCode = 1;
