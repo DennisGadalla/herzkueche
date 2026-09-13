@@ -5,7 +5,7 @@
   const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
   const GALLERY_BATCH_SIZE = 12;
   const GALLERY_MANIFEST_URL = "assets/img/galeries/galleries.json";
-  const POSTER_SOURCE_URL = "assets/img/events/poster-source.txt";
+  const POSTER_HIRES_URL = "assets/img/events/supperclub-2027-01-16-hires.avif";
   let posterReadyPromise = Promise.resolve();
 
   function setFooterYear() {
@@ -107,29 +107,21 @@
     if (!poster || !posterLink) return;
 
     try {
-      const response = await fetch(POSTER_SOURCE_URL, { cache: "force-cache" });
-      if (!response.ok) throw new Error(`Poster source HTTP ${response.status}`);
-      const base64 = (await response.text()).trim();
-      if (!base64.startsWith("/9j/") || base64.length < 500000) {
-        throw new Error("Poster source failed quality sanity check");
-      }
-
-      const dataUrl = `data:image/jpeg;base64,${base64}`;
       const dimensions = await new Promise((resolve, reject) => {
         const probe = new Image();
         probe.onload = () => resolve({ width: probe.naturalWidth, height: probe.naturalHeight });
         probe.onerror = () => reject(new Error("High-resolution poster could not be decoded"));
-        probe.src = dataUrl;
+        probe.src = POSTER_HIRES_URL;
       });
       if (dimensions.width < 1000 || dimensions.height < 1500) {
         throw new Error(`Poster source too small: ${dimensions.width}x${dimensions.height}`);
       }
 
-      poster.src = dataUrl;
-      poster.dataset.fullSrc = dataUrl;
+      poster.src = POSTER_HIRES_URL;
+      poster.dataset.fullSrc = POSTER_HIRES_URL;
       poster.dataset.posterQuality = "hires";
-      posterLink.href = dataUrl;
-      if (dialogPoster) dialogPoster.src = dataUrl;
+      posterLink.href = POSTER_HIRES_URL;
+      if (dialogPoster) dialogPoster.src = POSTER_HIRES_URL;
     } catch (error) {
       console.error("High-resolution event poster unavailable", error);
     }
