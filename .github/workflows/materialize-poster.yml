@@ -26,6 +26,7 @@ jobs:
           cat assets/img/events/poster.b64.part* | base64 --decode > assets/img/events/supperclub-2027-01-16.jpg
           test "$(wc -c < assets/img/events/supperclub-2027-01-16.jpg)" -gt 20000
           test "$(head -c 2 assets/img/events/supperclub-2027-01-16.jpg | xxd -p)" = "ffd8"
+          test "$(sha256sum assets/img/events/supperclub-2027-01-16.jpg | awk '{print $1}')" = "2d89dd49902abb63ee74890aef200182ba38e3b7b8719704cddfa52912753fde"
       - name: Commit poster and remove staging files
         shell: bash
         run: |
