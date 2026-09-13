@@ -1,0 +1,39 @@
+name: Materialize Supperclub poster
+
+on:
+  push:
+    branches:
+      - agent/supperclub-site-optimization
+    paths:
+      - assets/img/events/poster.b64.ready
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Rebuild optimized poster
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p assets/img/events
+          cat assets/img/events/poster.b64.part* | base64 --decode > assets/img/events/supperclub-2027-01-16.jpg
+          test "$(wc -c < assets/img/events/supperclub-2027-01-16.jpg)" -gt 20000
+          test "$(head -c 2 assets/img/events/supperclub-2027-01-16.jpg | xxd -p)" = "ffd8"
+      - name: Commit poster and remove staging files
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm assets/img/events/poster.b64.part* assets/img/events/poster.b64.ready
+          rm .github/workflows/materialize-poster.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: add optimized Supperclub poster"
+          git push origin HEAD:agent/supperclub-site-optimization
