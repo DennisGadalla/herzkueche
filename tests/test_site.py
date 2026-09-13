@@ -243,11 +243,13 @@ class SiteStructureTests(unittest.TestCase):
         self.assertIn("data-event-end", self.js)
         self.assertIn("past-events-list", self.js)
 
-    def test_css_avoids_persistent_compositor_hints_and_hidden_content(self):
+    def test_css_avoids_rendering_and_compositor_shortcuts_that_can_pop_in(self):
         self.assertNotIn("will-change:", self.css)
+        self.assertNotIn("content-visibility:", self.css)
+        self.assertNotIn("contain-intrinsic-size:", self.css)
         self.assertNotRegex(self.css, r"\.card\s*\{[^}]*opacity\s*:\s*0")
         self.assertIn("prefers-reduced-motion", self.css)
-        self.assertIn("content-visibility: auto", self.css)
+        self.assertNotIn(".galerie-grid { grid-template-columns: 1fr; }", self.css)
 
     def test_no_root_absolute_local_asset_paths(self):
         for page in PAGES:
