@@ -24,10 +24,9 @@ const viewports = [
 const EXPECTED_EVENT_MESSAGE = [
   "Hallo Sabine,",
   "",
-  "ich möchte gerne für das Supperclub Dinner am 16.01.2027 anfragen.",
+  "ich interessiere mich für das Supperclub Dinner am 16.01.2027 und möchte gerne Plätze anfragen.",
   "",
   "Personenzahl: ",
-  "Unverträglichkeiten / Wünsche (optional): ",
   "",
   "Liebe Grüße",
 ].join("\n");
@@ -52,7 +51,6 @@ async function activateWholePage(page) {
 async function settle(page) {
   await page.waitForTimeout(180);
   await activateWholePage(page);
-  // Never let a browser decode promise hang the CI job. Each image gets a bounded wait.
   await page.evaluate(async () => {
     const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     await Promise.all([...document.images].map(async (image) => {
@@ -88,26 +86,33 @@ async function pageHealth(page) {
   });
 }
 
-async function stableGeometry(page) {
+async function stableGeometry(page, waits = [650]) {
   const selectors = [
-    "header .container", ".hero", "#about .card", "#angebot .card",
+    "header", "header .container", ".hero", "#about .card", "#angebot .card",
     "#supperclub .event-card", "#impressionen .card", "#kontakt .card",
   ];
-  const sample = () => page.evaluate((items) => Object.fromEntries(items.map((selector) => {
-    const node = document.querySelector(selector);
-    if (!node || getComputedStyle(node).display === "none") return [selector, null];
-    const rect = node.getBoundingClientRect();
-    return [selector, { left: rect.left, top: rect.top + scrollY, width: rect.width, height: rect.height }];
-  })), selectors);
+  const sample = () => page.evaluate((items) => ({
+    documentHeight: document.documentElement.scrollHeight,
+    geometry: Object.fromEntries(items.map((selector) => {
+      const node = document.querySelector(selector);
+      if (!node || getComputedStyle(node).display === "none") return [selector, null];
+      const rect = node.getBoundingClientRect();
+      return [selector, { left: rect.left, top: rect.top + scrollY, width: rect.width, height: rect.height }];
+    })),
+  }), selectors);
 
   const first = await sample();
-  await page.waitForTimeout(650);
-  const second = await sample();
-  for (const selector of selectors) {
-    if (!first[selector] || !second[selector]) continue;
-    for (const key of ["left", "top", "width", "height"]) {
-      const delta = Math.abs(first[selector][key] - second[selector][key]);
-      assert.ok(delta <= 1.5, `${selector}: ${key} drifted by ${delta.toFixed(2)}px after load`);
+  for (const wait of waits) {
+    await page.waitForTimeout(wait);
+    const current = await sample();
+    const pageDelta = Math.abs(current.documentHeight - first.documentHeight);
+    assert.ok(pageDelta <= 1.5, `document height kept changing by ${pageDelta.toFixed(2)}px`);
+    for (const selector of selectors) {
+      if (!first.geometry[selector] || !current.geometry[selector]) continue;
+      for (const key of ["left", "top", "width", "height"]) {
+        const delta = Math.abs(first.geometry[selector][key] - current.geometry[selector][key]);
+        assert.ok(delta <= 1.5, `${selector}: ${key} drifted by ${delta.toFixed(2)}px after load`);
+      }
     }
   }
 }
@@ -142,6 +147,10 @@ async function auditRoute(browser, routeName, route, viewportName, viewport) {
   assert.ok(response && response.ok(), `${routeName}/${viewportName}: HTTP load failed`);
   await settle(page);
 
+  if (routeName === "home") {
+    await page.waitForFunction(() => document.querySelector(".event-poster")?.dataset.posterQuality === "hires", null, { timeout: 5000 });
+  }
+
   const health = await pageHealth(page);
   assert.ok(health.scrollWidth <= health.innerWidth + 1,
     `${routeName}/${viewportName}: horizontal overflow ${health.scrollWidth}px > ${health.innerWidth}px`);
@@ -149,7 +158,7 @@ async function auditRoute(browser, routeName, route, viewportName, viewport) {
   assert.deepEqual(health.smallControls, [], `${routeName}/${viewportName}: undersized controls`);
   assert.deepEqual(errors, [], `${routeName}/${viewportName}: browser errors: ${errors.join(" | ")}`);
   assert.deepEqual(failedRequests, [], `${routeName}/${viewportName}: failed requests: ${failedRequests.join(" | ")}`);
-  await stableGeometry(page);
+  await stableGeometry(page, routeName === "home" ? [600, 900, 1200] : [650]);
 
   if (routeName === "home") {
     await assertSectionAlignment(page, `home/${viewportName}`);
@@ -165,14 +174,16 @@ async function auditRoute(browser, routeName, route, viewportName, viewport) {
     const poster = await page.locator(".event-poster").evaluate((image) => ({
       naturalWidth: image.naturalWidth,
       naturalHeight: image.naturalHeight,
+      quality: image.dataset.posterQuality,
     }));
+    assert.equal(poster.quality, "hires", `home/${viewportName}: high-resolution poster was not activated`);
     assert.ok(poster.naturalWidth >= 1000 && poster.naturalHeight >= 1500,
       `home/${viewportName}: event poster source is too low resolution (${poster.naturalWidth}x${poster.naturalHeight})`);
-    const posterBytes = await page.evaluate(async () => {
-      const response = await fetch("assets/img/events/supperclub-2027-01-16.jpg", { cache: "no-store" });
-      return (await response.arrayBuffer()).byteLength;
+    const sourceLength = await page.evaluate(async () => {
+      const response = await fetch("assets/img/events/poster-source.txt", { cache: "no-store" });
+      return (await response.text()).trim().length;
     });
-    assert.ok(posterBytes >= 250000, `home/${viewportName}: event poster is over-compressed (${posterBytes} bytes)`);
+    assert.ok(sourceLength >= 500000, `home/${viewportName}: high-resolution poster payload is unexpectedly small`);
 
     if (viewportName === "desktop") {
       const eventWidths = await page.evaluate(() =>
@@ -199,9 +210,10 @@ async function auditInquiryInteraction(browser, viewportName, viewport) {
   const page = await context.newPage();
   await page.goto(`${BASE}/index.html`, { waitUntil: "domcontentloaded" });
   await settle(page);
+  await page.waitForFunction(() => document.querySelector(".event-poster")?.dataset.posterQuality === "hires", null, { timeout: 5000 });
 
   await page.locator("[data-event-inquiry]").click();
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(300);
 
   assert.equal(await page.locator("#topic").inputValue(), "Supperclub 16.01.2027", `${viewportName}: topic prefill`);
   assert.equal(await page.locator("#contact-subject").inputValue(), "Supperclub 16.01.2027 – Platzanfrage", `${viewportName}: subject prefill`);
@@ -232,7 +244,6 @@ async function auditInquiryInteraction(browser, viewportName, viewport) {
 }
 
 async function auditExpiredEvent(browser) {
-  // At the configured end instant the event is no longer bookable and belongs in the archive.
   const now = Date.parse("2027-01-16T23:00:00+01:00");
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   const page = await context.newPage();
@@ -279,7 +290,7 @@ async function auditExpiredEvent(browser) {
   }
 
   fs.writeFileSync(path.join(OUT, "report.json"), JSON.stringify(report, null, 2));
-  console.log(`Visual audit PASS: ${report.length} states checked, including layout stability and inquiry interactions`);
+  console.log(`Visual audit PASS: ${report.length} states checked, including sustained layout stability and inquiry interactions`);
 })().catch((error) => {
   console.error(error.stack || error);
   process.exitCode = 1;
