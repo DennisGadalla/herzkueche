@@ -2,7 +2,7 @@ name: Verify static site
 
 on:
   push:
-    branches: [main]
+    branches: [main, "agent/professional-ui-pass"]
   pull_request:
 
 permissions:
