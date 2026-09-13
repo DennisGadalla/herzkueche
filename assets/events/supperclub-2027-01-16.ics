@@ -1,0 +1,15 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Sabines Herzkueche//Supperclub//DE
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+UID:supperclub-20270116@sabines-herzkueche.de
+DTSTAMP:20260913T152900Z
+DTSTART:20270116T170000Z
+DTEND:20270116T220000Z
+SUMMARY:Supperclub Dinner – Sabines Herzküche
+DESCRIPTION:Supperclub Dinner am 16. Januar 2027 von 18 bis 23 Uhr. Preis: 109 EUR pro Person. Inklusive Wein, Bier, Wasser und Kaffee.
+URL:https://www.sabines-herzkueche.de/#supperclub
+END:VEVENT
+END:VCALENDAR
