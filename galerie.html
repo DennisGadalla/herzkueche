@@ -2,23 +2,21 @@
 <html lang="de">
 <head>
   <meta charset="utf-8" />
-  <title>Galerie – Sabines Herzküche</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Galerie – Sabines Herzküche</title>
   <meta name="robots" content="noindex" />
-  <link rel="icon" href="assets/img/logo.svg" type="image/svg+xml" />
+  <link rel="icon" href="assets/img/logo/logo.png" type="image/png" />
   <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 <body>
-  <!-- Header -->
   <header>
     <div class="container">
       <nav class="nav" aria-label="Hauptnavigation">
         <a class="brand" href="index.html" aria-label="Zur Startseite">
-          <img src="assets/img/logo/logo.png"
-               alt="Sabines Herzküche Logo"
-               class="brand-logo" width="58" height="58" decoding="async" />
+          <img src="assets/img/logo/logo.png" alt="Sabines Herzküche" class="brand-logo" width="68" height="68" decoding="async" />
         </a>
         <div class="links">
+          <a href="index.html#impressionen" class="nav-event-link">Galerien</a>
           <a href="index.html#kontakt" class="btn">Kontakt</a>
         </div>
       </nav>
@@ -26,31 +24,31 @@
   </header>
 
   <main>
-    <section class="section" aria-labelledby="galerie-title">
+    <section aria-labelledby="galerie-title">
       <div class="container">
-        <div class="card">
+        <div class="card gallery-page-card">
           <span class="tag">Impressionen</span>
-          <h2 id="galerie-title">Galerie</h2>
-
-          <!-- NEW: Zurück button -->
-          <div class="gallery-actions">
-            <a class="btn" href="index.html#impressionen">Zurück</a>
+          <div class="gallery-head">
+            <div>
+              <h1 id="galerie-title">Galerie</h1>
+            </div>
+            <div class="gallery-actions">
+              <a class="btn" href="index.html#impressionen">Zurück</a>
+            </div>
           </div>
-
-          <p id="galerie-desc" class="muted">Bilder werden geladen …</p>
-          <div id="galerie-grid" class="galerie-grid"></div>
+          <p id="galerie-desc" class="gallery-meta">Galerie wird geladen …</p>
+          <div id="galerie-grid" class="galerie-grid" aria-live="polite"></div>
+          <div id="gallery-more-wrap" class="gallery-more-wrap" hidden>
+            <button id="gallery-more" class="btn" type="button">Mehr Bilder laden</button>
+          </div>
         </div>
       </div>
     </section>
   </main>
 
   <footer>
-    <div class="container">
-      <span id="year"></span> © Sabine Gadalla — Sabines Herzküche
-      · <a class="footer-link" href="impressum.html">Impressum</a>
-    </div>
+    <div class="container"><span id="year"></span> © Sabine Gadalla — Sabines Herzküche · <a class="footer-link" href="impressum.html">Impressum</a></div>
   </footer>
-
   <script src="assets/js/main.js" defer></script>
 </body>
 </html>
