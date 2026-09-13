@@ -1,0 +1,41 @@
+name: Assemble poster asset
+
+on:
+  push:
+    branches: ["agent/final-regression-fix"]
+    paths:
+      - ".github/workflows/assemble-poster.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repair branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/final-regression-fix
+          fetch-depth: 0
+
+      - name: Rebuild and validate poster
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p assets/img/events
+          cat .poster-parts/part-*.b64 | base64 --decode > assets/img/events/supperclub-2027-01-16.avif
+          test "$(stat -c%s assets/img/events/supperclub-2027-01-16.avif)" = "40630"
+          echo "003a432117dc55a1ce571d50a3408a74cfcd6031efe53dc7cf96074483be7d1c  assets/img/events/supperclub-2027-01-16.avif" | sha256sum -c -
+
+      - name: Commit clean poster asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .poster-parts
+          rm -f .github/workflows/assemble-poster.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "asset: restore high-quality Supperclub poster"
+          git push origin HEAD:agent/final-regression-fix
