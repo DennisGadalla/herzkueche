@@ -2,7 +2,7 @@ name: Verify static site
 
 on:
   push:
-    branches: [main, "agent/final-regression-fix"]
+    branches: [main]
   pull_request:
 
 permissions:
