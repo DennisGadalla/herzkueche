@@ -21,8 +21,8 @@ class RegressionTests(unittest.TestCase):
         self.assertLess(poster.stat().st_size, 500_000)
         self.assertIn('POSTER_HIRES_URL = "assets/img/events/supperclub-2027-01-16-hires.avif"', self.js)
         self.assertIn('poster.dataset.posterQuality = "hires"', self.js)
-        self.assertIn("dimensions.width < 1000", self.js)
-        self.assertIn("dimensions.height < 1500", self.js)
+        self.assertIn("poster.naturalWidth < 1000", self.js)
+        self.assertIn("poster.naturalHeight < 1500", self.js)
 
     def test_event_expires_at_exact_end_time(self):
         self.assertIn('if (now >= end) return "past";', self.js)
