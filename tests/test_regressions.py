@@ -14,12 +14,12 @@ class RegressionTests(unittest.TestCase):
         self.assertNotIn('setProperty("--header-h"', self.js)
         self.assertNotIn("setProperty('--header-h'", self.js)
 
-    def test_original_high_resolution_poster_source_is_present(self):
-        source = ROOT / "assets/img/events/poster-source.txt"
-        self.assertTrue(source.is_file())
-        payload = source.read_text(encoding="utf-8").strip()
-        self.assertTrue(payload.startswith("/9j/"))
-        self.assertGreater(len(payload), 500_000)
+    def test_high_resolution_poster_asset_is_present_and_guarded(self):
+        poster = ROOT / "assets/img/events/supperclub-2027-01-16-hires.avif"
+        self.assertTrue(poster.is_file())
+        self.assertGreater(poster.stat().st_size, 10_000)
+        self.assertLess(poster.stat().st_size, 500_000)
+        self.assertIn('POSTER_HIRES_URL = "assets/img/events/supperclub-2027-01-16-hires.avif"', self.js)
         self.assertIn('poster.dataset.posterQuality = "hires"', self.js)
         self.assertIn("dimensions.width < 1000", self.js)
         self.assertIn("dimensions.height < 1500", self.js)
