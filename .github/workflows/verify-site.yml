@@ -34,7 +34,7 @@ jobs:
 
       - name: Install browser test tooling
         run: |
-          npm install --no-save --package-lock=false playwright@1.55.0
+          npm install --no-save --package-lock=false playwright@1.55.0 axe-core@4.10.3
           npx playwright install --with-deps chromium
 
       - name: Run browser regression audits
@@ -47,6 +47,7 @@ jobs:
           node tests/contact_form_audit.js
           node tests/mobile_gallery_audit.js
           node tests/platform_audit.js
+          node tests/accessibility_audit.js
 
       - name: Upload visual audit screenshots
         if: always()
