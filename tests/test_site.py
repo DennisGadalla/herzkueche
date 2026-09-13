@@ -107,7 +107,7 @@ class SiteStructureTests(unittest.TestCase):
         self.assertEqual(len(event_time), 1)
 
     def test_event_poster_asset_exists(self):
-        poster = ROOT / "assets/img/events/supperclub-2027-01-16.webp"
+        poster = ROOT / "assets/img/events/supperclub-2027-01-16.jpg"
         self.assertTrue(poster.is_file())
         self.assertGreater(poster.stat().st_size, 50_000)
         self.assertLess(poster.stat().st_size, 500_000)
