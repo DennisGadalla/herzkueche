@@ -1,5 +1,25 @@
-{ "galleries": [
-  { "id": "Buffets",   "title": "Buffets",   "count": 62 },
-  { "id": "Herzkueche", "title": "Herzküche", "count": 46 },
-  { "id": "Dining", "title": "Dining", "count": 48 }
-]}
+{
+  "galleries": [
+    {
+      "id": "Buffets",
+      "title": "Buffets",
+      "pattern": "img-{}.jpg",
+      "thumbnailPattern": "img-{}.webp",
+      "ranges": [[1, 62]]
+    },
+    {
+      "id": "Herzkueche",
+      "title": "Herzküche",
+      "pattern": "img-{}.jpg",
+      "thumbnailPattern": "img-{}.webp",
+      "ranges": [[1, 46]]
+    },
+    {
+      "id": "Dining",
+      "title": "Dining",
+      "pattern": "img-{}.jpg",
+      "thumbnailPattern": "img-{}.webp",
+      "ranges": [[1, 22], [33, 48]]
+    }
+  ]
+}
