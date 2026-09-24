@@ -48,6 +48,11 @@ class PlatformQualityTests(unittest.TestCase):
         self.assertIn('price: "109"', self.js)
         self.assertIn('priceCurrency: "EUR"', self.js)
 
+    def test_event_schema_satisfies_search_console(self):
+        for token in ('location: {', '"@type": "Place"', '"@type": "PostalAddress"', 'addressLocality: "Recklinghausen"',
+                      'description: "', 'performer: {', 'availability: "https://schema.org/InStock"', 'validFrom: "'):
+            self.assertIn(token, self.js)
+
     def test_conversion_enhancements_are_defined(self):
         self.assertIn("enhanceHero", self.js)
         self.assertIn("enhanceOffer", self.js)
