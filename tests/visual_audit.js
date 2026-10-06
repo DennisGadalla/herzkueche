@@ -132,7 +132,7 @@ async function assertHome(page, viewportName) {
     assert.equal(await page.locator(selector).count(), 0, "home/" + viewportName + ": removed event remains at " + selector);
   }
   assert.equal(await page.getByText("Supperclub Dinner", { exact: true }).count(), 0, "home/" + viewportName + ": event title remains");
-  assert.equal(await page.locator('[data-service-card] h3').allTextContents(), ["Private Cooking", "Kochkurse", "Buffets", "Supperclubs"]);
+  assert.deepEqual(await page.locator('[data-service-card] h3').allTextContents(), ["Private Cooking", "Kochkurse", "Buffets", "Supperclubs"]);
 
   const rows = await page.evaluate(() => [...document.querySelectorAll("main > section:not([hidden]) > .container")]
     .filter((node) => getComputedStyle(node).display !== "none")
