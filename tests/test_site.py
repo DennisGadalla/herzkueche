@@ -124,8 +124,7 @@ class SiteStructureTests(unittest.TestCase):
 
     def test_core_sections_exist(self):
         for section_id in (
-            "about", "angebot", "supperclub", "vergangene-veranstaltungen",
-            "impressionen", "kontakt"
+            "about", "angebot", "impressionen", "kontakt"
         ):
             self.assertTrue(find(self.index_parser, "section", id=section_id), section_id)
 
@@ -152,37 +151,22 @@ class SiteStructureTests(unittest.TestCase):
             self.assertTrue(path.is_file())
             self.assertLess(path.stat().st_size, 250_000, src)
 
-    def test_event_has_explicit_lifecycle_and_archive_target(self):
-        event = find(
-            self.index_parser,
-            "article",
-            **{
-                "data-event-card": None,
-                "data-event-start": "2027-01-16T18:00:00+01:00",
-                "data-event-end": "2027-01-16T23:00:00+01:00",
-            },
-        )
-        self.assertEqual(len(event), 1)
-        past = find(self.index_parser, "section", id="vergangene-veranstaltungen")
-        self.assertEqual(len(past), 1)
-        self.assertIn("hidden", past[0])
-        self.assertTrue(find(self.index_parser, "div", id="past-events-list"))
-        self.assertIn("Vergangene Veranstaltungen", self.index_text)
+    def test_supperclub_event_is_absent_but_general_service_remains(self):
+        for token in ("data-event-card", "supperclub-2027-01-16", "Supperclub Dinner", "16. Januar 2027", "poster-dialog"):
+            self.assertNotIn(token, self.index)
+        self.assertIn('<option value="Supperclub">Supperclub</option>', self.index)
 
-    def test_event_content_and_cta(self):
-        self.assertIn("16. Januar 2027", self.index_text)
-        self.assertIn("109 € pro Person", self.index_text)
-        cta = find(self.index_parser, "a", href="#kontakt", **{"data-event-inquiry": None})
-        self.assertEqual(len(cta), 1)
-        event_time = find(self.index_parser, "time", datetime="2027-01-16")
-        self.assertEqual(len(event_time), 1)
-
-    def test_event_poster_asset_is_reasonably_sized(self):
-        poster = ROOT / "assets/img/events/supperclub-2027-01-16.jpg"
-        self.assertTrue(poster.is_file())
-        self.assertGreater(poster.stat().st_size, 20_000)
-        self.assertLess(poster.stat().st_size, 500_000)
-
+    def test_supperclub_service_uses_non_event_imagery(self):
+        self.assertIn('["Supperclubs", "Supperclub",', self.js)
+        self.assertIn("assets/img/galeries/thumbs/Dining/img-34.webp", self.js)
+        self.assertNotIn("assets/img/events/", self.js)
+    def test_event_content_and_cta_are_removed(self):
+        for token in ("Supperclub Dinner", "16. Januar 2027", "109 € pro Person", "data-event-inquiry"):
+            self.assertNotIn(token, self.index)
+    def test_event_poster_is_not_in_homepage_markup(self):
+        self.assertNotIn("supperclub-2027-01-16", self.index)
+        self.assertNotIn("event-poster", self.index)
+        self.assertNotIn("poster-dialog", self.index)
     def test_contact_form_wiring(self):
         forms = find(
             self.index_parser,
@@ -240,8 +224,8 @@ class SiteStructureTests(unittest.TestCase):
             self.assertNotIn(token, self.js)
         self.assertIn("GALLERY_BATCH_SIZE", self.js)
         self.assertIn("thumbnailPattern", self.js)
-        self.assertIn("data-event-end", self.js)
-        self.assertIn("past-events-list", self.js)
+        self.assertNotIn("data-event-end", self.js)
+        self.assertNotIn("past-events-list", self.js)
 
     def test_css_avoids_rendering_and_compositor_shortcuts_that_can_pop_in(self):
         self.assertNotIn("will-change:", self.css)
