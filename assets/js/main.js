@@ -232,6 +232,41 @@
     topic.addEventListener("change", () => { subject.value = `${topic.value} – Anfrage über Sabines Herzküche`; });
   }
 
+  let lightbox = null;
+  let lightboxImage = null;
+  let lightboxTitle = null;
+  let lastLightboxTrigger = null;
+
+  function ensureLightbox() {
+    if (lightbox) return lightbox;
+    lightbox = document.createElement("dialog");
+    lightbox.className = "lightbox-dialog";
+    lightbox.setAttribute("aria-labelledby", "lightbox-title");
+    lightbox.innerHTML = '<div class="lightbox-dialog-inner"><div class="lightbox-dialog-head"><strong id="lightbox-title">Bildansicht</strong><button type="button" class="lightbox-dialog-close" aria-label="Bildansicht schließen">×</button></div><img alt="" /></div>';
+    document.body.appendChild(lightbox);
+    lightboxImage = $("img", lightbox);
+    lightboxTitle = $("#lightbox-title", lightbox);
+    $(".lightbox-dialog-close", lightbox)?.addEventListener("click", () => lightbox.close());
+    lightbox.addEventListener("click", (event) => { if (event.target === lightbox) lightbox.close(); });
+    lightbox.addEventListener("close", () => {
+      if (lightboxImage) lightboxImage.src = "";
+      lastLightboxTrigger?.focus({ preventScroll: true });
+      lastLightboxTrigger = null;
+    });
+    return lightbox;
+  }
+
+  function openLightbox(image, trigger = null) {
+    if (!(image instanceof HTMLImageElement)) return;
+    const dialog = ensureLightbox();
+    if (!lightboxImage || typeof dialog.showModal !== "function") return;
+    lastLightboxTrigger = trigger instanceof HTMLElement ? trigger : document.activeElement;
+    lightboxImage.src = image.dataset.fullSrc || image.currentSrc || image.src;
+    lightboxImage.alt = image.alt || "Bildansicht";
+    if (lightboxTitle) lightboxTitle.textContent = image.alt || "Bildansicht";
+    dialog.showModal();
+  }
+
   function initStaticImageLightboxes() {
     $("#impressions-track")?.addEventListener("click", (event) => {
       const trigger = event.target.closest("[data-impression-open]");
