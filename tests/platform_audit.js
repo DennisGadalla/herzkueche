@@ -32,7 +32,7 @@ async function auditHome(browser, viewport) {
   await page.locator(".lightbox-dialog-close").click();
   assert.equal(await firstImpression.evaluate((node) => document.activeElement === node), true, "lightbox close should return focus to trigger");
 
-  for (const topic of ["Private Cooking", "Kochkurs", "Buffet", "Supperclub 16.01.2027"]) {
+  for (const topic of ["Private Cooking", "Kochkurs", "Buffet", "Supperclub"]) {
     await page.locator(`[data-service-cta][data-service-topic="${topic}"]`).click();
     assert.equal(await page.locator("#topic").inputValue(), topic, `service CTA should select ${topic}`);
   }
@@ -42,9 +42,10 @@ async function auditHome(browser, viewport) {
   }
   assert.equal(await page.locator('input[name="botcheck"]').count(), 1, "botcheck missing");
   assert.equal(await page.locator(".form-privacy a").getAttribute("href"), "datenschutz.html", "privacy notice must link to policy");
-  assert.equal(await page.locator("[data-event-calendar]").getAttribute("download"), "", "calendar link should download");
   assert.ok((await page.locator("head link[rel=canonical]").getAttribute("href")).includes("sabines-herzkueche.de"));
   assert.equal(await page.locator('script[data-site-schema]').count(), 1, "structured data missing");
+  const schema = await page.locator('script[data-site-schema]').textContent();
+  assert.equal(schema.includes('"@type":"Event"'), false, "removed event must not remain in structured data");
 
   if (viewport.width <= 620) {
     const sticky = page.locator("[data-sticky-contact]");

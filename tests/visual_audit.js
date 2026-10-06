@@ -21,16 +21,6 @@ const viewports = [
   ["mobile", { width: 390, height: 844 }],
 ];
 
-const EXPECTED_EVENT_MESSAGE = [
-  "Hallo Sabine,",
-  "",
-  "ich interessiere mich für das Supperclub Dinner am 16.01.2027 und möchte gerne Plätze anfragen.",
-  "",
-  "Personenzahl: ",
-  "",
-  "Liebe Grüße",
-].join("\n");
-
 async function activateWholePage(page) {
   await page.evaluate(async () => {
     const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -68,7 +58,6 @@ async function stableGeometry(page, waits = [650]) {
     ".hero",
     "#about .card",
     "#angebot .card",
-    "#supperclub .event-card",
     "#impressionen .card",
     "#kontakt .card",
   ];
@@ -135,30 +124,15 @@ async function assertHealth(page, label) {
 }
 
 async function assertHome(page, viewportName) {
-  for (const selector of ["#about", "#angebot", "#supperclub", "#impressionen", "#kontakt"]) {
-    assert.equal(await page.locator(selector).isVisible(), true, `home/${viewportName}: ${selector}`);
+  for (const selector of ["#about", "#angebot", "#impressionen", "#kontakt"]) {
+    assert.equal(await page.locator(selector).isVisible(), true, "home/" + viewportName + ": " + selector);
   }
 
-  const poster = await page.locator(".event-poster").evaluate((image) => ({
-    width: image.naturalWidth,
-    height: image.naturalHeight,
-    src: image.currentSrc || image.src,
-  }));
-  assert.ok(
-    poster.width >= 640 && poster.height >= 960,
-    `home/${viewportName}: poster only ${poster.width}x${poster.height}`
-  );
-  assert.ok(
-    poster.src.includes("supperclub-2027-01-16.avif"),
-    `home/${viewportName}: wrong poster source ${poster.src}`
-  );
-
-  const assetBytes = await page.evaluate(async () => {
-    const response = await fetch("assets/img/events/supperclub-2027-01-16.avif", { cache: "no-store" });
-    if (!response.ok) throw new Error(`poster asset HTTP ${response.status}`);
-    return (await response.arrayBuffer()).byteLength;
-  });
-  assert.ok(assetBytes >= 40_000, `home/${viewportName}: poster unexpectedly small (${assetBytes} bytes)`);
+  for (const selector of ["#supperclub", "#vergangene-veranstaltungen", ".event-card", ".event-poster", "#poster-dialog"]) {
+    assert.equal(await page.locator(selector).count(), 0, "home/" + viewportName + ": removed event remains at " + selector);
+  }
+  assert.equal(await page.getByText("Supperclub Dinner", { exact: true }).count(), 0, "home/" + viewportName + ": event title remains");
+  assert.deepEqual(await page.locator('[data-service-card] h3').allTextContents(), ["Private Cooking", "Kochkurse", "Buffets", "Supperclubs"]);
 
   const rows = await page.evaluate(() => [...document.querySelectorAll("main > section:not([hidden]) > .container")]
     .filter((node) => getComputedStyle(node).display !== "none")
@@ -166,14 +140,14 @@ async function assertHome(page, viewportName) {
       const rect = node.getBoundingClientRect();
       return { left: rect.left, width: rect.width };
     }));
-  assert.ok(rows.length >= 5, `home/${viewportName}: aligned section containers missing`);
+  assert.ok(rows.length >= 4, "home/" + viewportName + ": aligned section containers missing");
   assert.ok(
     Math.max(...rows.map((row) => row.left)) - Math.min(...rows.map((row) => row.left)) <= 1.5,
-    `home/${viewportName}: section left edges drift`
+    "home/" + viewportName + ": section left edges drift"
   );
   assert.ok(
     Math.max(...rows.map((row) => row.width)) - Math.min(...rows.map((row) => row.width)) <= 1.5,
-    `home/${viewportName}: section widths drift`
+    "home/" + viewportName + ": section widths drift"
   );
 
   const contactHeights = await page.evaluate(() =>
@@ -181,17 +155,9 @@ async function assertHome(page, viewportName) {
       .map((node) => node.getBoundingClientRect().height));
   assert.ok(
     contactHeights.length >= 4 && contactHeights.every((height) => height >= 44),
-    `home/${viewportName}: contact controls too small`
+    "home/" + viewportName + ": contact controls too small"
   );
-
-  if (viewportName === "desktop") {
-    const widths = await page.evaluate(() =>
-      [...document.querySelectorAll(".event-facts > div")].map((node) => node.getBoundingClientRect().width));
-    assert.equal(widths.length, 3, "home/desktop: three event facts expected");
-    assert.ok(Math.max(...widths) - Math.min(...widths) < 2, "home/desktop: event facts unequal");
-  }
 }
-
 async function auditRoute(browser, routeName, route, viewportName, viewport) {
   const context = await browser.newContext({ viewport });
   const page = await context.newPage();
@@ -224,19 +190,19 @@ async function auditRoute(browser, routeName, route, viewportName, viewport) {
 async function auditInquiry(browser, viewportName, viewport) {
   const context = await browser.newContext({ viewport, reducedMotion: "reduce" });
   const page = await context.newPage();
-  await page.goto(`${BASE}/index.html`, { waitUntil: "domcontentloaded" });
+  await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
   await settle(page);
 
-  await page.locator("[data-event-inquiry]").click();
+  await page.locator('[data-service-cta][data-service-topic="Supperclub"]').click();
   await page.waitForTimeout(300);
-  assert.equal(await page.locator("#topic").inputValue(), "Supperclub 16.01.2027", `${viewportName}: topic`);
+  assert.equal(await page.locator("#topic").inputValue(), "Supperclub", viewportName + ": topic");
   assert.equal(
     await page.locator("#contact-subject").inputValue(),
-    "Supperclub 16.01.2027 – Platzanfrage",
-    `${viewportName}: subject`
+    "Supperclub – Anfrage über Sabines Herzküche",
+    viewportName + ": subject"
   );
-  assert.equal(await page.locator("#message").inputValue(), EXPECTED_EVENT_MESSAGE, `${viewportName}: message`);
-  assert.equal(new URL(page.url()).hash, "#kontakt", `${viewportName}: hash`);
+  assert.equal(await page.locator("#message").inputValue(), "", viewportName + ": stale event message prefill");
+  assert.equal(new URL(page.url()).hash, "#kontakt", viewportName + ": hash");
 
   const position = await page.evaluate(() => {
     const name = document.querySelector("#name").getBoundingClientRect();
@@ -246,63 +212,20 @@ async function auditInquiry(browser, viewportName, viewport) {
       nameBottom: name.bottom,
       headerBottom: header.bottom,
       viewportHeight: innerHeight,
-      active: document.activeElement?.id,
+      active: document.activeElement && document.activeElement.id,
     };
   });
   assert.ok(
     position.nameBottom > position.headerBottom + 20 && position.nameTop < position.viewportHeight - 20,
-    `${viewportName}: name field is not visible after inquiry jump`
+    viewportName + ": name field is not visible after inquiry jump"
   );
-  assert.equal(position.active, "name", `${viewportName}: name field not focused`);
+  assert.equal(position.active, "name", viewportName + ": name field not focused");
 
-  await page.locator("[data-poster-open]").click();
-  assert.equal(await page.locator("#poster-dialog").evaluate((dialog) => dialog.open), true, `${viewportName}: poster dialog`);
-  const dialogPoster = await page.locator("#poster-dialog img").evaluate((image) => ({
-    width: image.naturalWidth,
-    height: image.naturalHeight,
-  }));
-  assert.ok(
-    dialogPoster.width >= 640 && dialogPoster.height >= 960,
-    `${viewportName}: enlarged poster only ${dialogPoster.width}x${dialogPoster.height}`
-  );
-  await page.locator("[data-poster-close]").click();
-
-  const screenshot = path.join(OUT, `home-inquiry-${viewportName}.png`);
+  const screenshot = path.join(OUT, "home-supperclub-inquiry-" + viewportName + ".png");
   await page.screenshot({ path: screenshot, fullPage: true });
   await context.close();
-  return { routeName: "home-inquiry", viewportName, screenshot };
+  return { routeName: "home-supperclub-inquiry", viewportName, screenshot };
 }
-
-async function auditExpiredEvent(browser) {
-  const now = Date.parse("2027-01-16T23:00:00+01:00");
-  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
-  const page = await context.newPage();
-  await page.addInitScript((mockNow) => {
-    const NativeDate = Date;
-    class MockDate extends NativeDate {
-      constructor(...args) { super(...(args.length ? args : [mockNow])); }
-      static now() { return mockNow; }
-    }
-    MockDate.parse = NativeDate.parse;
-    MockDate.UTC = NativeDate.UTC;
-    window.Date = MockDate;
-  }, now);
-
-  await page.goto(`${BASE}/index.html`, { waitUntil: "domcontentloaded" });
-  await settle(page);
-  assert.equal(await page.locator("#supperclub").isVisible(), false, "expired current event should be hidden");
-  assert.equal(await page.locator("#vergangene-veranstaltungen").isVisible(), true, "past events should be visible");
-  assert.equal(await page.locator("#past-events-list [data-event-card]").count(), 1, "event should move to archive");
-  assert.equal(await page.locator("#past-events-list [data-event-inquiry]").count(), 0, "expired event must not book");
-  assert.equal(await page.locator('#topic option[value="Supperclub 16.01.2027"]').count(), 0, "expired option remains");
-  assert.equal(await page.locator("[data-event-nav]").getAttribute("href"), "#vergangene-veranstaltungen");
-
-  const screenshot = path.join(OUT, "home-expired-event-desktop.png");
-  await page.screenshot({ path: screenshot, fullPage: true });
-  await context.close();
-  return { routeName: "home-expired-event", viewportName: "desktop", screenshot };
-}
-
 (async () => {
   const browser = await chromium.launch({ headless: true });
   const report = [];
@@ -314,7 +237,6 @@ async function auditExpiredEvent(browser) {
     }
     report.push(await auditInquiry(browser, "desktop", viewports[0][1]));
     report.push(await auditInquiry(browser, "mobile", viewports[2][1]));
-    report.push(await auditExpiredEvent(browser));
   } finally {
     await browser.close();
   }

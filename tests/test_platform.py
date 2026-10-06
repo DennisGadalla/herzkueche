@@ -41,25 +41,19 @@ class PlatformQualityTests(unittest.TestCase):
 
     def test_runtime_seo_and_structured_data_are_present(self):
         self.assertIn("enhanceMetadata", self.js)
-        for token in ("og:title", "og:description", "og:url", "og:image", "twitter:card", '"@type": "Person"', '"@type": "Event"'):
+        for token in ("og:title", "og:description", "og:url", "og:image", "twitter:card", '"@type": "Person"'):
             self.assertIn(token, self.js)
-        self.assertIn('startDate: "2027-01-16T18:00:00+01:00"', self.js)
-        self.assertIn('endDate: "2027-01-16T23:00:00+01:00"', self.js)
-        self.assertIn('price: "109"', self.js)
-        self.assertIn('priceCurrency: "EUR"', self.js)
 
-    def test_event_schema_satisfies_search_console(self):
-        for token in ('location: {', '"@type": "Place"', '"@type": "PostalAddress"', 'addressLocality: "Recklinghausen"',
-                      'description: "', 'performer: {', 'availability: "https://schema.org/InStock"', 'validFrom: "'):
-            self.assertIn(token, self.js)
+    def test_removed_event_is_absent_from_runtime_metadata(self):
+        self.assertNotIn('"@type": "Event"', self.js)
+        self.assertNotIn("supperclub-2027-01-16", self.js)
 
     def test_conversion_enhancements_are_defined(self):
         self.assertIn("enhanceHero", self.js)
         self.assertIn("enhanceOffer", self.js)
         self.assertIn("enhanceContactForm", self.js)
-        self.assertIn("enhanceCalendarAction", self.js)
         self.assertIn("initStickyContact", self.js)
-        for topic in ("Private Cooking", "Kochkurs", "Buffet", "Supperclub 16.01.2027"):
+        for topic in ("Private Cooking", "Kochkurs", "Buffet", "Supperclub"):
             self.assertIn(topic, self.js)
         for field in ('id="date"', 'id="location"', 'id="party"', 'name="botcheck"', 'datenschutz.html'):
             self.assertIn(field, self.js)
@@ -77,20 +71,13 @@ class PlatformQualityTests(unittest.TestCase):
         self.assertIn("--action: #ad4327", self.css.lower())
         self.assertIn("background: var(--action)", self.css)
 
-    def test_event_architecture_is_generalized(self):
-        self.assertIn("const cards = $$('[data-event-card]')", self.js)
-        self.assertIn("cards.forEach", self.js)
-        self.assertNotIn('const card = $("[data-event-card]")', self.js)
-        self.assertIn("active.sort", self.js)
-        self.assertIn("past.sort", self.js)
-
-    def test_calendar_asset_matches_visible_event_times(self):
-        calendar = (ROOT / "assets/events/supperclub-2027-01-16.ics").read_text(encoding="utf-8")
-        self.assertIn("DTSTART:20270116T170000Z", calendar)
-        self.assertIn("DTEND:20270116T220000Z", calendar)
-        self.assertIn("109 EUR", calendar)
-        self.assertIn("assets/events/supperclub-2027-01-16.ics", self.js)
-
+    def test_removed_event_lifecycle_is_absent(self):
+        for token in ("data-event-card", "initEventLifecycle", "initEventInquiry", "data-event-calendar"):
+            self.assertNotIn(token, self.js)
+    def test_calendar_asset_is_not_linked_from_homepage(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertNotIn("supperclub-2027-01-16", html)
+        self.assertNotIn("supperclub-2027-01-16", self.js)
     def test_gallery_manifest_has_visual_entry_metadata(self):
         manifest = json.loads((ROOT / "assets/img/galeries/galleries.json").read_text(encoding="utf-8"))
         for gallery in manifest["galleries"]:

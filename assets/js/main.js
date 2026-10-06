@@ -75,32 +75,6 @@
             jobTitle: "Privatköchin und Kursleiterin",
             sameAs: ["https://www.instagram.com/sabinethetasteallstars/", "https://www.youtube.com/@sabinegadalla9102"],
           },
-          {
-            "@type": "Event",
-            "@id": "https://www.sabines-herzkueche.de/#supperclub-2027-01-16",
-            name: "Supperclub Dinner – Sabines Herzküche",
-            description: "Exklusives Abendessen in kleiner Runde mit kreativen Gerichten, guten Gesprächen und entspannter Atmosphäre. Inklusive Wein, Bier, Wasser und Kaffee.",
-            startDate: "2027-01-16T18:00:00+01:00",
-            endDate: "2027-01-16T23:00:00+01:00",
-            eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
-            eventStatus: "https://schema.org/EventScheduled",
-            image: "https://www.sabines-herzkueche.de/assets/img/events/supperclub-2027-01-16.avif",
-            location: {
-              "@type": "Place",
-              name: "Sabines Herzküche, Recklinghausen",
-              address: { "@type": "PostalAddress", addressLocality: "Recklinghausen", addressRegion: "NRW", addressCountry: "DE" },
-            },
-            organizer: { "@id": "https://www.sabines-herzkueche.de/#sabine-gadalla" },
-            performer: { "@id": "https://www.sabines-herzkueche.de/#sabine-gadalla" },
-            offers: {
-              "@type": "Offer",
-              price: "109",
-              priceCurrency: "EUR",
-              availability: "https://schema.org/InStock",
-              validFrom: "2026-09-13T00:00:00+02:00",
-              url: "https://www.sabines-herzkueche.de/#kontakt",
-            },
-          },
         ],
       });
       document.head.appendChild(schema);
@@ -173,7 +147,7 @@
       ["Private Cooking", "Private Cooking", "Ein persönlicher Genussabend bei dir zuhause – entspannt, individuell und ohne Küchenstress.", "assets/img/galeries/thumbs/Dining/img-33.webp"],
       ["Kochkurse", "Kochkurs", "Gemeinsam kochen, Neues lernen und genießen – von international bis deutsch.", "assets/img/galeries/thumbs/Herzkueche/img-7.webp"],
       ["Buffets", "Buffet", "Warm oder kalt, klassisch oder ausgefallen – passend zu Gästen, Anlass und Geschmack.", "assets/img/galeries/thumbs/Buffets/img-1.webp"],
-      ["Supperclubs", "Supperclub 16.01.2027", "Ein gemeinsamer Abend in kleiner Runde – kreative Gerichte, Gespräche und entspannte Atmosphäre.", "assets/img/events/supperclub-2027-01-16.avif"],
+      ["Supperclubs", "Supperclub", "Kreative Gerichte, gute Gespräche und entspannte Atmosphäre bei einem gemeinsamen Abend.", "assets/img/galeries/thumbs/Dining/img-34.webp"],
     ];
     services.forEach(([label, topic, description, imageSrc]) => {
       const article = document.createElement("article");
@@ -221,28 +195,6 @@
     footer.appendChild(link);
   }
 
-  function enhanceCalendarAction() {
-    $$('[data-event-card]').forEach((card) => {
-      if ($("[data-event-calendar]", card)) return;
-      const inquiry = $("[data-event-inquiry]", card);
-      if (!inquiry) return;
-      let actions = inquiry.parentElement;
-      if (!actions.classList.contains("event-actions")) {
-        actions = document.createElement("div");
-        actions.className = "event-actions";
-        inquiry.replaceWith(actions);
-        actions.appendChild(inquiry);
-      }
-      const calendar = document.createElement("a");
-      calendar.className = "btn";
-      calendar.href = "assets/events/supperclub-2027-01-16.ics";
-      calendar.setAttribute("download", "");
-      calendar.dataset.eventCalendar = "1";
-      calendar.textContent = "Zum Kalender hinzufügen";
-      actions.appendChild(calendar);
-    });
-  }
-
   function setInquiryTopic(topicValue, subjectValue = "") {
     const topic = $("#topic");
     const subject = $("#contact-subject");
@@ -273,101 +225,11 @@
     });
   }
 
-  function getEventState(startIso, endIso, now = Date.now()) {
-    const start = Date.parse(startIso || "");
-    const end = Date.parse(endIso || "");
-    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return "invalid";
-    if (now >= end) return "past";
-    if (now >= start) return "live";
-    return "upcoming";
-  }
-
-  function initEventLifecycle() {
-    const cards = $$('[data-event-card]');
-    if (!cards.length) return;
-    const currentSection = $("#supperclub");
-    const currentContainer = $("[data-current-events]") || currentSection?.querySelector(".container");
-    const pastSection = $("#vergangene-veranstaltungen");
-    const pastList = $("#past-events-list");
-    const navLink = $("[data-event-nav]");
-    const topic = $("#topic");
-    const active = [];
-    const past = [];
-
-    cards.forEach((card) => {
-      const state = getEventState(card.getAttribute("data-event-start"), card.getAttribute("data-event-end"));
-      const tag = $("[data-event-status]", card);
-      card.dataset.eventState = state;
-      if (state === "live") {
-        if (tag) tag.textContent = "Heute";
-        active.push(card);
-      } else if (state === "upcoming") {
-        active.push(card);
-      } else if (state === "past") {
-        card.classList.add("event-card--past");
-        if (tag) tag.textContent = "Vergangen";
-        $$('[data-event-inquiry], [data-event-calendar]', card).forEach((cta) => cta.remove());
-        const option = findOption(topic, card.getAttribute("data-event-topic"));
-        option?.remove();
-        past.push(card);
-      }
-    });
-
-    active.sort((a, b) => Date.parse(a.getAttribute("data-event-start")) - Date.parse(b.getAttribute("data-event-start")));
-    active.forEach((card) => currentContainer?.appendChild(card));
-    past.sort((a, b) => Date.parse(b.getAttribute("data-event-start")) - Date.parse(a.getAttribute("data-event-start")));
-    past.forEach((card) => pastList?.appendChild(card));
-    if (pastSection) pastSection.hidden = past.length === 0;
-    if (currentSection) currentSection.hidden = active.length === 0;
-    if (navLink && active.length === 0 && past.length > 0) {
-      navLink.href = "#vergangene-veranstaltungen";
-      navLink.textContent = "Veranstaltungen";
-    }
-  }
-
-  function initEventInquiry() {
-    const form = $("#contact-form");
-    const message = $("#message");
-    const name = $("#name");
-    if (!form || !message) return;
-    $$('[data-event-inquiry]').forEach((eventButton) => {
-      const card = eventButton.closest("[data-event-card]");
-      if (!card) return;
-      const topicValue = card.getAttribute("data-event-topic") || "Supperclub";
-      const dateLabel = card.getAttribute("data-event-date-label") || "";
-      eventButton.addEventListener("click", (event) => {
-        event.preventDefault();
-        setInquiryTopic(topicValue, `${topicValue} – Platzanfrage`);
-        if (!message.value.trim()) {
-          message.value = ["Hallo Sabine,", "", `ich interessiere mich für das Supperclub Dinner${dateLabel ? ` am ${dateLabel}` : ""} und möchte gerne Plätze anfragen.`, "", "Personenzahl: ", "", "Liebe Grüße"].join("\n");
-        }
-        scrollTargetIntoView(form, { focus: name, hash: "#kontakt" });
-      });
-    });
-  }
-
   function initContactSubject() {
     const topic = $("#topic");
     const subject = $("#contact-subject");
     if (!topic || !subject) return;
     topic.addEventListener("change", () => { subject.value = `${topic.value} – Anfrage über Sabines Herzküche`; });
-  }
-
-  function initPosterDialog() {
-    const dialog = $("#poster-dialog");
-    const dialogPoster = $("#poster-dialog img");
-    const closeButton = $("[data-poster-close]");
-    if (!dialog || typeof dialog.showModal !== "function") return;
-    $$('[data-poster-open]').forEach((posterLink) => {
-      posterLink.addEventListener("click", (event) => {
-        event.preventDefault();
-        const poster = $("img", posterLink);
-        if (dialogPoster && poster) { dialogPoster.src = poster.currentSrc || poster.src; dialogPoster.alt = poster.alt; }
-        dialog.showModal();
-      });
-    });
-    closeButton?.addEventListener("click", () => dialog.close());
-    dialog.addEventListener("click", (event) => { if (event.target === dialog) dialog.close(); });
   }
 
   let lightbox = null;
@@ -552,14 +414,10 @@
   enhanceOffer();
   enhanceContactForm();
   enhanceFooter();
-  enhanceCalendarAction();
   setFooterYear();
-  initEventLifecycle();
-  initEventInquiry();
   initContactJumps();
   initServiceInquiries();
   initContactSubject();
-  initPosterDialog();
   initStaticImageLightboxes();
   initGalleryLinks();
   initGalleryPage();

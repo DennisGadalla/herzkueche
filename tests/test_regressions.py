@@ -15,22 +15,14 @@ class RegressionTests(unittest.TestCase):
         self.assertNotIn("syncHeaderHeight", self.js)
         self.assertNotIn('setProperty("--header-h"', self.js)
 
-    def test_restored_poster_asset_is_directly_used(self):
-        poster = ROOT / "assets/img/events/supperclub-2027-01-16.avif"
-        self.assertTrue(poster.is_file())
-        self.assertGreaterEqual(poster.stat().st_size, 40_000)
-        self.assertLess(poster.stat().st_size, 100_000)
-        self.assertGreaterEqual(self.html.count("assets/img/events/supperclub-2027-01-16.avif"), 3)
-        self.assertIn('class="event-poster" width="640" height="960" loading="eager"', self.html)
-
-    def test_event_expires_at_exact_end_time(self):
-        self.assertIn('if (now >= end) return "past";', self.js)
-
-    def test_supperclub_prefill_is_natural_and_short(self):
-        self.assertIn("ich interessiere mich für das Supperclub Dinner", self.js)
-        self.assertIn("und möchte gerne Plätze anfragen.", self.js)
-        self.assertIn('"Personenzahl: "', self.js)
-        self.assertNotIn("Unverträglichkeiten / Wünsche (optional)", self.js)
+    def test_event_poster_is_not_rendered_or_referenced_from_homepage(self):
+        self.assertNotIn("supperclub-2027-01-16", self.html)
+        self.assertNotIn("supperclub-2027-01-16", self.js)
+        self.assertNotIn("event-poster", self.html)
+        self.assertNotIn("poster-dialog", self.html)
+    def test_event_specific_lifecycle_and_prefill_are_absent(self):
+        for token in ("getEventState", "initEventLifecycle", "initEventInquiry", "Supperclub Dinner", "16.01.2027"):
+            self.assertNotIn(token, self.js + self.html)
 
     def test_inquiry_jump_uses_fixed_header_offset_hash_and_focus(self):
         self.assertIn("target.getBoundingClientRect().top - headerHeight - 16", self.js)
