@@ -129,12 +129,23 @@ class SiteStructureTests(unittest.TestCase):
             self.assertTrue(find(self.index_parser, "section", id=section_id), section_id)
 
     def test_hero_image_is_eager_and_high_priority(self):
-        hero = find(self.index_parser, "img", src="assets/img/person/sabine-3.jpg")
+        hero = find(
+            self.index_parser, "img", **{"class": "hero-portrait"},
+            src="assets/img/person/sabine-beim-anrichten.webp",
+        )
         self.assertEqual(len(hero), 1)
         self.assertEqual(hero[0].get("loading"), "eager")
         self.assertEqual(hero[0].get("fetchpriority"), "high")
         self.assertTrue(hero[0].get("width"))
         self.assertTrue(hero[0].get("height"))
+
+    def test_about_newspaper_links_to_the_labeled_full_size_image(self):
+        about = self.index.split('<section id="about"', 1)[1].split("</section>", 1)[0]
+        newspaper = "assets/img/person/kuechen-zeitung.webp"
+        self.assertIn(f'href="{newspaper}"', about)
+        self.assertIn(f'src="{newspaper}"', about)
+        self.assertIn("KI-generierte Illustration", about)
+        self.assertTrue((ROOT / newspaper).is_file())
 
     def test_home_impression_strip_is_static_and_lightweight(self):
         imgs = [attrs for tag, attrs in self.index_parser.attrs_by_tag

@@ -160,7 +160,7 @@ header {
 .hero h2 { margin-bottom: 18px; color: var(--accent-dark); font-size: clamp(1.35rem, 2.5vw, 2rem); font-family: inherit; font-weight: 760; letter-spacing: -.02em; }
 .hero p { max-width: 64ch; color: var(--muted); }
 .hero-image { display: flex; justify-content: flex-end; }
-.hero-portrait { width: min(100%, 350px); aspect-ratio: 1; object-fit: cover; border-radius: 50%; border: 7px solid var(--surface); box-shadow: 0 18px 50px rgba(70,39,25,.16), 0 0 0 1px var(--border); }
+.hero-portrait { width: min(100%, 350px); height: auto; aspect-ratio: 1; object-fit: cover; object-position: center 40%; border-radius: 50%; border: 7px solid var(--surface); box-shadow: 0 18px 50px rgba(70,39,25,.16), 0 0 0 1px var(--border); }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
 .hero-social { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 18px; }
 .insta-link, .yt-link { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; color: var(--muted); font-size: .92rem; font-weight: 720; }
@@ -181,6 +181,10 @@ section { padding-block: var(--section-space); }
 .about-text p:last-child { margin-bottom: 0; }
 .about-photo { margin: 0; }
 .about-img { width: 220px; height: 220px; object-fit: cover; border-radius: 50%; border: 5px solid var(--surface-soft); box-shadow: var(--shadow-sm); }
+.about-newspaper { width: min(100%, 480px); margin: clamp(24px, 4vw, 42px) auto 0; text-align: center; }
+.about-newspaper a { display: block; border-radius: var(--radius-sm); cursor: zoom-in; }
+.about-newspaper img { width: 100%; height: auto; border: 1px solid var(--border); border-radius: inherit; box-shadow: var(--shadow-sm); }
+.about-newspaper figcaption { margin-top: 8px; color: var(--muted); font-size: .8125rem; }
 :where(.card, .hero) ul { margin: 8px 0 20px; padding-inline-start: 1.3rem; }
 :where(.card, .hero) li { margin-block: 7px; }
 :where(.card, .hero) li::marker { color: var(--accent); }
